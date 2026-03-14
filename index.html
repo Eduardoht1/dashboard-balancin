@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dashboard Balancin de Bola 2.0</title>
+    <title>Dashboard Balancin de Bola 3.0</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <style>
         :root {
             --bg: #1a1a1a;
@@ -40,7 +40,6 @@
             align-items: start;
         }
 
-        /* AJUSTE PARA CELULAR */
         @media (max-width: 850px) {
             .container { grid-template-columns: 1fr; }
             .chart-container { height: 350px !important; }
@@ -120,14 +119,14 @@
 </head>
 <body>
 
-    <h1>Dashboard Control Balancin</h1>
+    <h1>Dashboard Control Balancin 3.0</h1>
 
     <div class="container">
         <div class="panel" id="mainPanel">
             <h2>Panel de Control</h2>
             <button id="btnMotores" class="btn btn-off" onclick="sendCmd('motores')">MOTORES: OFF</button>
             <button id="btnControl" class="btn btn-disabled" onclick="sendCmd('control')" disabled>CONTROL PID: OFF</button>
-            <div class="status-ip" id="mqttStatus">Estado: Desconectado</div>
+            <div class="status-ip" id="mqttStatus">Estado: Conectando...</div>
 
             <h2 style="margin-top: 20px;">Telemetría</h2>
             <div class="telemetry-grid">
@@ -162,21 +161,26 @@
     </div>
 
     <script>
-        const BROKER = "broker.mqttdashboard.com"; 
-        const USE_SSL = window.location.protocol === "https:"; 
-        const PORT = USE_SSL ? 8884 : 8000; // Puerto 8884 para HTTPS (WSS)
         const TOPIC_DATA = "delta/eduhdz/telemetria";
         const TOPIC_CMD = "delta/eduhdz/comandos";
+        
+        // Configuración para GitHub Pages (WSS - Puerto 8884)
+        const client = mqtt.connect('wss://broker.hivemq.com:8884/mqtt');
 
         let estadoActual = { motores: false, control: false };
         let labelsCount = 400; 
         let tiempoInicio = 0; 
 
-        const client = new Paho.MQTT.Client(BROKER, PORT, "web_user_" + Math.random().toString(16).slice(2, 8));
+        client.on('connect', () => {
+            document.getElementById('mqttStatus').innerText = "Conectado a la Nube (WSS)";
+            document.getElementById('mqttStatus').style.color = "#2ecc71";
+            client.subscribe(TOPIC_DATA);
+        });
 
-        client.onMessageArrived = (message) => {
-            const data = JSON.parse(message.payloadString);
+        client.on('message', (topic, message) => {
+            const data = JSON.parse(message.toString());
             
+            // Sincronización multi-pantalla
             if(data.m_on !== undefined) {
                 estadoActual.motores = data.m_on;
                 estadoActual.control = data.c_on;
@@ -190,8 +194,8 @@
             document.getElementById('v_posY').innerText = Math.round(posY_final);
             document.getElementById('v_errX').innerText = data.errX.toFixed(2);
             document.getElementById('v_errY').innerText = data.errY.toFixed(2);
-            document.getElementById('p_errX').innerText = `${((posX_final - 550) / 550 * 100).toFixed(1)}%`;
-            document.getElementById('p_errY').innerText = `${((posY_final - 550) / 550 * 100).toFixed(1)}%`;
+            document.getElementById('p_errX').innerText = `${((posX_final - 550) / 5.5).toFixed(1)}%`;
+            document.getElementById('p_errY').innerText = `${((posY_final - 550) / 5.5).toFixed(1)}%`;
 
             if(data.s1 !== undefined) {
                 document.getElementById('v_s1').innerText = Math.round(data.s1) + "°";
@@ -215,13 +219,12 @@
             } else {
                 tiempoInicio = 0;
             }
-        };
+        });
 
-        client.onConnectionLost = (e) => {
-            document.getElementById('mqttStatus').innerText = "Reconectando...";
+        client.on('error', (err) => {
+            document.getElementById('mqttStatus').innerText = "Fallo: " + err;
             document.getElementById('mqttStatus').style.color = "#e74c3c";
-            setTimeout(conectar, 3000);
-        };
+        });
 
         function sendCmd(tipo) {
             let nEstado = { ...estadoActual };
@@ -231,9 +234,7 @@
             } else {
                 nEstado.control = !estadoActual.control;
             }
-            let message = new Paho.MQTT.Message(JSON.stringify(nEstado));
-            message.destinationName = TOPIC_CMD;
-            client.send(message);
+            client.publish(TOPIC_CMD, JSON.stringify(nEstado));
         }
 
         function actualizarUI() {
@@ -284,25 +285,6 @@
             posChart.data.labels.shift();
             posChart.update('none'); 
         }
-
-        function conectar() {
-            console.log("Conectando a " + BROKER + ":" + PORT + " con SSL: " + USE_SSL);
-            client.connect({
-                onSuccess: () => {
-                    document.getElementById('mqttStatus').innerText = "Conectado a la Nube";
-                    document.getElementById('mqttStatus').style.color = "#2ecc71";
-                    client.subscribe(TOPIC_DATA);
-                },
-                onFailure: (e) => {
-                    document.getElementById('mqttStatus').innerText = "Fallo: " + e.errorMessage;
-                },
-                useSSL: USE_SSL,
-                cleanSession: true,
-                keepAliveInterval: 30,
-                timeout: 10
-            });
-        }
-        conectar();
     </script>
 </body>
 </html>
