@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Dashboard Balancin de Bola MQTT</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
+    <style>
+        :root {
+            --bg: #1a1a1a;
+            --card: #2d2d2d;
+            --text: #e0e0e0;
+            --accent: #3498db;
+            --danger: #e74c3c;
+            --success: #2ecc71;
+            --disabled: #333;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        h1 { margin-bottom: 15px; font-size: 22px; text-align: center; }
+
+        .container {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 15px;
+            max-width: 1400px;
+            width: 100%;
+            align-items: start; /* Alineación superior */
+        }
+
+        @media (max-width: 850px) {
+            .container { grid-template-columns: 1fr; }
+        }
+
+        .panel {
+            background: var(--card);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+        }
+
+        h2 { 
+            margin: 0 0 12px 0;
+            color: var(--accent); 
+            border-bottom: 1px solid #444; 
+            padding-bottom: 8px;
+            text-align: center;
+            font-size: 16px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            margin: 4px 0;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-off { background-color: var(--danger); color: white; }
+        .btn-on { background-color: var(--success); color: white; }
+        .btn-disabled { background-color: var(--disabled) !important; color: #666 !important; cursor: not-allowed !important; }
+
+        .telemetry-grid, .pid-grid, .motor-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 5px;
+        }
+
+        .pid-grid, .motor-grid {
+            grid-template-columns: 1fr 1fr 1fr;
+            margin-top: 10px;
+            border-top: 1px dashed #444;
+            padding-top: 10px;
+        }
+
+        .data-box {
+            background: #222;
+            padding: 8px;
+            border-radius: 6px;
+            text-align: center;
+            border: 1px solid #333;
+        }
+
+        .data-label { font-size: 10px; color: #888; display: block; margin-bottom: 2px; }
+        .data-value { font-size: 18px; font-weight: bold; color: var(--accent); font-family: monospace; }
+        .pid-value { font-size: 12px; color: #f1c40f; font-weight: bold; }
+        .percent-val { font-size: 11px; color: #aaa; margin-left: 4px; }
+
+        /* Ajuste de altura dinámica para el gráfico */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 520px; /* Ajustado para coincidir con la altura del panel PID en desktop */
+            max-height: 80vh;
+        }
+
+        canvas { background: #222; border-radius: 8px; }
+        .status-ip { font-size: 11px; color: #777; margin-top: 10px; text-align: center; }
+    </style>
+</head>
+<body>
+
+    <h1>Dashboard Control Balancin</h1>
+
+    <div class="container">
+        <div class="panel">
+            <h2>Panel de Control</h2>
+            <button id="btnMotores" class="btn btn-off" onclick="sendCmd('motores')">MOTORES: OFF</button>
+            <button id="btnControl" class="btn btn-disabled" onclick="sendCmd('control')" disabled>CONTROL PID: OFF</button>
+            <div class="status-ip" id="mqttStatus">Estado: Desconectado</div>
+
+            <h2 style="margin-top: 20px;">Telemetría</h2>
+            <div class="telemetry-grid">
+                <div class="data-box"><span class="data-label">Pos X</span><span id="v_posX" class="data-value">0</span></div>
+                <div class="data-box"><span class="data-label">Pos Y</span><span id="v_posY" class="data-value">0</span></div>
+                <div class="data-box"><span class="data-label">Error X</span><span id="v_errX" class="data-value">0.00</span><span id="p_errX" class="percent-val">0%</span></div>
+                <div class="data-box"><span class="data-label">Error Y</span><span id="v_errY" class="data-value">0.00</span><span id="p_errY" class="percent-val">0%</span></div>
+            </div>
+
+            <div class="motor-grid">
+                <div class="data-box"><span class="data-label">Servo 1</span><span id="v_s1" class="pid-value">0°</span></div>
+                <div class="data-box"><span class="data-label">Servo 2</span><span id="v_s2" class="pid-value">0°</span></div>
+                <div class="data-box"><span class="data-label">Servo 3</span><span id="v_s3" class="pid-value">0°</span></div>
+            </div>
+
+            <div class="pid-grid">
+                <div class="data-box"><span class="data-label">Kp X</span><span id="v_kpx" class="pid-value">0</span></div>
+                <div class="data-box"><span class="data-label">Ki X</span><span id="v_kix" class="pid-value">0</span></div>
+                <div class="data-box"><span class="data-label">Kd X</span><span id="v_kdx" class="pid-value">0</span></div>
+                <div class="data-box"><span class="data-label">Kp Y</span><span id="v_kpy" class="pid-value">0</span></div>
+                <div class="data-box"><span class="data-label">Ki Y</span><span id="v_kiy" class="pid-value">0</span></div>
+                <div class="data-box"><span class="data-label">Kd Y</span><span id="v_kdy" class="pid-value">0</span></div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>Posición de la Bola</h2>
+            <div class="chart-container">
+                <canvas id="chartPos"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const BROKER = "broker.hivemq.com";
+        const PORT = 8000;
+        const TOPIC_DATA = "delta/eduhdz/telemetria";
+        const TOPIC_CMD = "delta/eduhdz/comandos";
+
+        let estadoActual = { motores: false, control: false };
+        let labelsCount = 400; 
+        let tiempoInicio = 0; 
+
+        const client = new Paho.MQTT.Client(BROKER, PORT, "web_" + Math.random());
+
+        client.onMessageArrived = (message) => {
+            const data = JSON.parse(message.payloadString);
+            
+            // ACTUALIZAR ESTADO DE BOTONES (Sincronización multi-pantalla)
+            // Asumimos que la ESP32 enviará "m_on": true/false y "c_on": true/false en su JSON
+            if(data.m_on !== undefined) {
+                estadoActual.motores = data.m_on;
+                estadoActual.control = data.c_on;
+                actualizarUI();
+            }
+
+            let posX_final = data.posX;
+            let posY_final = data.posY > 1001 ? 0 : data.posY;
+
+            document.getElementById('v_posX').innerText = Math.round(posX_final);
+            document.getElementById('v_posY').innerText = Math.round(posY_final);
+            document.getElementById('v_errX').innerText = data.errX.toFixed(2);
+            document.getElementById('v_errY').innerText = data.errY.toFixed(2);
+            document.getElementById('p_errX').innerText = `${((posX_final - 550) / 550 * 100).toFixed(1)}%`;
+            document.getElementById('p_errY').innerText = `${((posY_final - 550) / 550 * 100).toFixed(1)}%`;
+
+            if(data.s1 !== undefined) {
+                document.getElementById('v_s1').innerText = Math.round(data.s1) + "°";
+                document.getElementById('v_s2').innerText = Math.round(data.s2) + "°";
+                document.getElementById('v_s3').innerText = Math.round(data.s3) + "°";
+            }
+
+            if(data.kpx !== undefined) {
+                document.getElementById('v_kpx').innerText = data.kpx.toFixed(4);
+                document.getElementById('v_kix').innerText = data.kix.toFixed(4);
+                document.getElementById('v_kdx').innerText = data.kdx.toFixed(4);
+                document.getElementById('v_kpy').innerText = data.kpy.toFixed(4);
+                document.getElementById('v_kiy').innerText = data.kiy.toFixed(4);
+                document.getElementById('v_kdy').innerText = data.kdy.toFixed(4);
+            }
+
+            if (estadoActual.control) {
+                if(tiempoInicio === 0) tiempoInicio = Date.now();
+                let tActual = ((Date.now() - tiempoInicio) / 1000).toFixed(2);
+                updateChart(posX_final, posY_final, tActual);
+            } else {
+                tiempoInicio = 0;
+            }
+        };
+
+        function sendCmd(tipo) {
+            let nEstado = { ...estadoActual };
+            if (tipo === 'motores') {
+                nEstado.motores = !estadoActual.motores;
+                if(!nEstado.motores) nEstado.control = false;
+            } else {
+                nEstado.control = !estadoActual.control;
+            }
+            let message = new Paho.MQTT.Message(JSON.stringify(nEstado));
+            message.destinationName = TOPIC_CMD;
+            client.send(message);
+        }
+
+        function actualizarUI() {
+            const btnM = document.getElementById('btnMotores');
+            const btnC = document.getElementById('btnControl');
+            
+            btnM.className = estadoActual.motores ? "btn btn-on" : "btn btn-off";
+            btnM.innerText = `MOTORES: ${estadoActual.motores ? 'ON' : 'OFF'}`;
+
+            if (!estadoActual.motores) {
+                btnC.disabled = true;
+                btnC.className = "btn btn-disabled";
+                btnC.innerText = "CONTROL PID: OFF";
+            } else {
+                btnC.disabled = false;
+                btnC.className = estadoActual.control ? "btn btn-on" : "btn btn-off";
+                btnC.innerText = `CONTROL PID: ${estadoActual.control ? 'ON' : 'OFF'}`;
+            }
+        }
+
+        const ctx = document.getElementById('chartPos').getContext('2d');
+        const posChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: Array(labelsCount).fill("0.00"),
+                datasets: [
+                    { label: 'Pos X', borderColor: '#3498db', data: Array(labelsCount).fill(550), borderWidth: 2, pointRadius: 0, fill: false, tension: 0.1 },
+                    { label: 'Pos Y', borderColor: '#e74c3c', data: Array(labelsCount).fill(550), borderWidth: 2, pointRadius: 0, fill: false, tension: 0.1 },
+                    { label: 'Setpoint', borderColor: 'rgba(255, 255, 255, 0.3)', data: Array(labelsCount).fill(550), borderWidth: 1, borderDash: [5, 5], pointRadius: 0, fill: false }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false,
+                interaction: { mode: 'index', intersect: false },
+                scales: { 
+                    y: { min: 0, max: 1000, grid: { color: '#333' }, ticks: { color: '#aaa' } }, 
+                    x: { ticks: { color: '#666', autoSkip: true, maxTicksLimit: 8 } } 
+                },
+                plugins: { legend: { labels: { color: 'white' } } }
+            }
+        });
+
+        function resetChart() {
+            posChart.data.labels = Array(labelsCount).fill("0.00");
+            posChart.data.datasets.forEach(d => d.data.fill(550));
+            posChart.update('none');
+        }
+
+        function updateChart(px, py, t) {
+            posChart.data.datasets[0].data.push(px);
+            posChart.data.datasets[0].data.shift();
+            posChart.data.datasets[1].data.push(py);
+            posChart.data.datasets[1].data.shift();
+            posChart.data.labels.push(t);
+            posChart.data.labels.shift();
+            posChart.update('none'); 
+        }
+
+        function conectar() {
+            client.connect({
+                onSuccess: () => {
+                    document.getElementById('mqttStatus').innerText = "Conectado a la Nube";
+                    document.getElementById('mqttStatus').style.color = "#2ecc71";
+                    client.subscribe(TOPIC_DATA);
+                },
+                useSSL: false,
+                cleanSession: true
+            });
+        }
+        conectar();
+    </script>
+</body>
+</html>
