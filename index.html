@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dashboard Balancin de Bola 3.0</title>
+    <title>Dashboard Balancin de Bola 3.1</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <style>
@@ -164,7 +164,6 @@
         const TOPIC_DATA = "delta/eduhdz/telemetria";
         const TOPIC_CMD = "delta/eduhdz/comandos";
         
-        // Configuración para GitHub Pages (WSS - Puerto 8884)
         const client = mqtt.connect('wss://broker.hivemq.com:8884/mqtt');
 
         let estadoActual = { motores: false, control: false };
@@ -180,7 +179,6 @@
         client.on('message', (topic, message) => {
             const data = JSON.parse(message.toString());
             
-            // Sincronización multi-pantalla
             if(data.m_on !== undefined) {
                 estadoActual.motores = data.m_on;
                 estadoActual.control = data.c_on;
@@ -268,23 +266,23 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 animation: false,
+                // INTERACCIÓN RECUPERADA:
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
                 scales: { 
                     y: { min: 0, max: 1000, grid: { color: '#333' }, ticks: { color: '#aaa' } }, 
                     x: { ticks: { color: '#666', autoSkip: true, maxTicksLimit: 8 } } 
                 },
-                plugins: { legend: { labels: { color: 'white' } } }
-            }
-        });
-
-        function updateChart(px, py, t) {
-            posChart.data.datasets[0].data.push(px);
-            posChart.data.datasets[0].data.shift();
-            posChart.data.datasets[1].data.push(py);
-            posChart.data.datasets[1].data.shift();
-            posChart.data.labels.push(t);
-            posChart.data.labels.shift();
-            posChart.update('none'); 
-        }
-    </script>
-</body>
-</html>
+                plugins: { 
+                    legend: { labels: { color: 'white' } },
+                    // TOOLTIP (Cajita de datos) RECUPERADO:
+                    tooltip: {
+                        enabled: true,
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        titleColor: '#3498db',
+                        callbacks: {
+                            title: function(context) {
+                                return 'Tiempo: ' + context[0].label + 's';
+                            }
