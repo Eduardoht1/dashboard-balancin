@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dashboard Balancin de Bola 3.2</title>
+    <title>Dashboard Balancin de Bola 3.4</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <style>
@@ -52,7 +52,7 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
             display: flex;
             flex-direction: column;
-            min-height: 200px; /* Asegura un mínimo */
+            min-height: 200px;
         }
 
         h2 { 
@@ -111,7 +111,7 @@
             position: relative;
             width: 100%;
             height: 520px; 
-            background: #222; /* Fondo para que no se vea vacío */
+            background: #222;
             border-radius: 8px;
         }
 
@@ -121,7 +121,7 @@
 </head>
 <body>
 
-    <h1>Dashboard Control Balancin 3.2</h1>
+    <h1>Dashboard Control Balancin 3.4</h1>
 
     <div class="container">
         <div class="panel" id="mainPanel">
@@ -171,9 +171,8 @@
         let estadoActual = { motores: false, control: false };
         let labelsCount = 400; 
         let tiempoInicio = 0; 
-        let posChart; // Declaramos global
+        let posChart;
 
-        // --- INICIALIZACIÓN DEL GRÁFICO AL CARGAR LA PÁGINA ---
         window.onload = function() {
             const ctx = document.getElementById('chartPos').getContext('2d');
             posChart = new Chart(ctx, {
@@ -207,7 +206,6 @@
                     }
                 }
             });
-            console.log("Gráfico inicializado");
         };
 
         client.on('connect', () => {
@@ -220,6 +218,11 @@
             const data = JSON.parse(message.toString());
             
             if(data.m_on !== undefined) {
+                // Detectar si el control se encendió (Sincronización y Reset)
+                if (data.c_on === true && estadoActual.control === false) {
+                    resetChart();
+                    tiempoInicio = Date.now();
+                }
                 estadoActual.motores = data.m_on;
                 estadoActual.control = data.c_on;
                 actualizarUI();
@@ -289,6 +292,15 @@
                 btnC.className = estadoActual.control ? "btn btn-on" : "btn btn-off";
                 btnC.innerText = `CONTROL PID: ${estadoActual.control ? 'ON' : 'OFF'}`;
             }
+        }
+
+        function resetChart() {
+            if(!posChart) return;
+            posChart.data.labels = Array(labelsCount).fill("0.00");
+            posChart.data.datasets[0].data = Array(labelsCount).fill(550);
+            posChart.data.datasets[1].data = Array(labelsCount).fill(550);
+            posChart.data.datasets[2].data = Array(labelsCount).fill(550);
+            posChart.update('none');
         }
 
         function updateChart(px, py, t) {
