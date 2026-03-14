@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dashboard Balancin de Bola</title>
+    <title>Dashboard Balancin de Bola 2.0</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
     <style>
@@ -107,7 +107,6 @@
         .pid-value { font-size: 12px; color: #f1c40f; font-weight: bold; }
         .percent-val { font-size: 11px; color: #aaa; margin-left: 4px; }
 
-        /* Estética: Igualar altura al panel en PC */
         .chart-container {
             position: relative;
             width: 100%;
@@ -163,11 +162,11 @@
     </div>
 
     <script>
-        const BROKER = "broker.mqttdashboard.com"; // Host más compatible con SSL
-        const PORT = 8000;
+        const BROKER = "broker.mqttdashboard.com"; 
+        const USE_SSL = window.location.protocol === "https:"; 
+        const PORT = USE_SSL ? 8884 : 8000; // Puerto 8884 para HTTPS (WSS)
         const TOPIC_DATA = "delta/eduhdz/telemetria";
         const TOPIC_CMD = "delta/eduhdz/comandos";
-        const USE_SSL = window.location.protocol === "https:"; // Autodetectar SSL
 
         let estadoActual = { motores: false, control: false };
         let labelsCount = 400; 
@@ -178,7 +177,6 @@
         client.onMessageArrived = (message) => {
             const data = JSON.parse(message.payloadString);
             
-            // Sincronización multi-pantalla (la ESP debe mandar m_on y c_on)
             if(data.m_on !== undefined) {
                 estadoActual.motores = data.m_on;
                 estadoActual.control = data.c_on;
@@ -269,7 +267,6 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 animation: false,
-                interaction: { mode: 'index', intersect: false },
                 scales: { 
                     y: { min: 0, max: 1000, grid: { color: '#333' }, ticks: { color: '#aaa' } }, 
                     x: { ticks: { color: '#666', autoSkip: true, maxTicksLimit: 8 } } 
@@ -289,6 +286,7 @@
         }
 
         function conectar() {
+            console.log("Conectando a " + BROKER + ":" + PORT + " con SSL: " + USE_SSL);
             client.connect({
                 onSuccess: () => {
                     document.getElementById('mqttStatus').innerText = "Conectado a la Nube";
@@ -300,7 +298,8 @@
                 },
                 useSSL: USE_SSL,
                 cleanSession: true,
-                keepAliveInterval: 30
+                keepAliveInterval: 30,
+                timeout: 10
             });
         }
         conectar();
