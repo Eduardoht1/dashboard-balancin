@@ -37,11 +37,13 @@
             gap: 15px;
             max-width: 1400px;
             width: 100%;
-            align-items: start; /* Alineación superior */
+            align-items: start;
         }
 
+        /* AJUSTE PARA CELULAR */
         @media (max-width: 850px) {
             .container { grid-template-columns: 1fr; }
+            .chart-container { height: 350px !important; }
         }
 
         .panel {
@@ -105,11 +107,11 @@
         .pid-value { font-size: 12px; color: #f1c40f; font-weight: bold; }
         .percent-val { font-size: 11px; color: #aaa; margin-left: 4px; }
 
-        /* Ajuste de altura dinámica para el gráfico */
+        /* Estética: Igualar altura al panel en PC */
         .chart-container {
             position: relative;
             width: 100%;
-            height: 520px; /* Ajustado para coincidir con la altura del panel PID en desktop */
+            height: 520px; 
             max-height: 80vh;
         }
 
@@ -122,7 +124,7 @@
     <h1>Dashboard Control Balancin</h1>
 
     <div class="container">
-        <div class="panel">
+        <div class="panel" id="mainPanel">
             <h2>Panel de Control</h2>
             <button id="btnMotores" class="btn btn-off" onclick="sendCmd('motores')">MOTORES: OFF</button>
             <button id="btnControl" class="btn btn-disabled" onclick="sendCmd('control')" disabled>CONTROL PID: OFF</button>
@@ -161,22 +163,22 @@
     </div>
 
     <script>
-        const BROKER = "broker.hivemq.com";
+        const BROKER = "broker.mqttdashboard.com"; // Host más compatible con SSL
         const PORT = 8000;
         const TOPIC_DATA = "delta/eduhdz/telemetria";
         const TOPIC_CMD = "delta/eduhdz/comandos";
+        const USE_SSL = window.location.protocol === "https:"; // Autodetectar SSL
 
         let estadoActual = { motores: false, control: false };
         let labelsCount = 400; 
         let tiempoInicio = 0; 
 
-        const client = new Paho.MQTT.Client(BROKER, PORT, "web_" + Math.random());
+        const client = new Paho.MQTT.Client(BROKER, PORT, "web_user_" + Math.random().toString(16).slice(2, 8));
 
         client.onMessageArrived = (message) => {
             const data = JSON.parse(message.payloadString);
             
-            // ACTUALIZAR ESTADO DE BOTONES (Sincronización multi-pantalla)
-            // Asumimos que la ESP32 enviará "m_on": true/false y "c_on": true/false en su JSON
+            // Sincronización multi-pantalla (la ESP debe mandar m_on y c_on)
             if(data.m_on !== undefined) {
                 estadoActual.motores = data.m_on;
                 estadoActual.control = data.c_on;
@@ -217,6 +219,12 @@
             }
         };
 
+        client.onConnectionLost = (e) => {
+            document.getElementById('mqttStatus').innerText = "Reconectando...";
+            document.getElementById('mqttStatus').style.color = "#e74c3c";
+            setTimeout(conectar, 3000);
+        };
+
         function sendCmd(tipo) {
             let nEstado = { ...estadoActual };
             if (tipo === 'motores') {
@@ -233,10 +241,8 @@
         function actualizarUI() {
             const btnM = document.getElementById('btnMotores');
             const btnC = document.getElementById('btnControl');
-            
             btnM.className = estadoActual.motores ? "btn btn-on" : "btn btn-off";
             btnM.innerText = `MOTORES: ${estadoActual.motores ? 'ON' : 'OFF'}`;
-
             if (!estadoActual.motores) {
                 btnC.disabled = true;
                 btnC.className = "btn btn-disabled";
@@ -272,12 +278,6 @@
             }
         });
 
-        function resetChart() {
-            posChart.data.labels = Array(labelsCount).fill("0.00");
-            posChart.data.datasets.forEach(d => d.data.fill(550));
-            posChart.update('none');
-        }
-
         function updateChart(px, py, t) {
             posChart.data.datasets[0].data.push(px);
             posChart.data.datasets[0].data.shift();
@@ -295,8 +295,12 @@
                     document.getElementById('mqttStatus').style.color = "#2ecc71";
                     client.subscribe(TOPIC_DATA);
                 },
-                useSSL: true,
-                cleanSession: true
+                onFailure: (e) => {
+                    document.getElementById('mqttStatus').innerText = "Fallo: " + e.errorMessage;
+                },
+                useSSL: USE_SSL,
+                cleanSession: true,
+                keepAliveInterval: 30
             });
         }
         conectar();
