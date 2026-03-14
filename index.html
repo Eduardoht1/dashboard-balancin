@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dashboard Balancin de Bola 3.1</title>
+    <title>Dashboard Balancin de Bola 3.2</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <style>
@@ -52,6 +52,7 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
             display: flex;
             flex-direction: column;
+            min-height: 200px; /* Asegura un mínimo */
         }
 
         h2 { 
@@ -110,16 +111,17 @@
             position: relative;
             width: 100%;
             height: 520px; 
-            max-height: 80vh;
+            background: #222; /* Fondo para que no se vea vacío */
+            border-radius: 8px;
         }
 
-        canvas { background: #222; border-radius: 8px; }
+        canvas { border-radius: 8px; }
         .status-ip { font-size: 11px; color: #777; margin-top: 10px; text-align: center; }
     </style>
 </head>
 <body>
 
-    <h1>Dashboard Control Balancin 3.1</h1>
+    <h1>Dashboard Control Balancin 3.2</h1>
 
     <div class="container">
         <div class="panel" id="mainPanel">
@@ -169,6 +171,44 @@
         let estadoActual = { motores: false, control: false };
         let labelsCount = 400; 
         let tiempoInicio = 0; 
+        let posChart; // Declaramos global
+
+        // --- INICIALIZACIÓN DEL GRÁFICO AL CARGAR LA PÁGINA ---
+        window.onload = function() {
+            const ctx = document.getElementById('chartPos').getContext('2d');
+            posChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array(labelsCount).fill("0.00"),
+                    datasets: [
+                        { label: 'Pos X', borderColor: '#3498db', data: Array(labelsCount).fill(550), borderWidth: 2, pointRadius: 0, fill: false, tension: 0.1 },
+                        { label: 'Pos Y', borderColor: '#e74c3c', data: Array(labelsCount).fill(550), borderWidth: 2, pointRadius: 0, fill: false, tension: 0.1 },
+                        { label: 'Setpoint', borderColor: 'rgba(255, 255, 255, 0.3)', data: Array(labelsCount).fill(550), borderWidth: 1, borderDash: [5, 5], pointRadius: 0, fill: false }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: { 
+                        y: { min: 0, max: 1000, grid: { color: '#333' }, ticks: { color: '#aaa' } }, 
+                        x: { ticks: { color: '#666', autoSkip: true, maxTicksLimit: 8 } } 
+                    },
+                    plugins: { 
+                        legend: { labels: { color: 'white' } },
+                        tooltip: {
+                            enabled: true,
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            callbacks: {
+                                title: function(context) { return 'Tiempo: ' + context[0].label + 's'; }
+                            }
+                        }
+                    }
+                }
+            });
+            console.log("Gráfico inicializado");
+        };
 
         client.on('connect', () => {
             document.getElementById('mqttStatus').innerText = "Conectado a la Nube (WSS)";
@@ -210,7 +250,7 @@
                 document.getElementById('v_kdy').innerText = data.kdy.toFixed(4);
             }
 
-            if (estadoActual.control) {
+            if (estadoActual.control && posChart) {
                 if(tiempoInicio === 0) tiempoInicio = Date.now();
                 let tActual = ((Date.now() - tiempoInicio) / 1000).toFixed(2);
                 updateChart(posX_final, posY_final, tActual);
@@ -251,38 +291,16 @@
             }
         }
 
-        const ctx = document.getElementById('chartPos').getContext('2d');
-        const posChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: Array(labelsCount).fill("0.00"),
-                datasets: [
-                    { label: 'Pos X', borderColor: '#3498db', data: Array(labelsCount).fill(550), borderWidth: 2, pointRadius: 0, fill: false, tension: 0.1 },
-                    { label: 'Pos Y', borderColor: '#e74c3c', data: Array(labelsCount).fill(550), borderWidth: 2, pointRadius: 0, fill: false, tension: 0.1 },
-                    { label: 'Setpoint', borderColor: 'rgba(255, 255, 255, 0.3)', data: Array(labelsCount).fill(550), borderWidth: 1, borderDash: [5, 5], pointRadius: 0, fill: false }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                animation: false,
-                // INTERACCIÓN RECUPERADA:
-                interaction: {
-                    mode: 'index',
-                    intersect: false,
-                },
-                scales: { 
-                    y: { min: 0, max: 1000, grid: { color: '#333' }, ticks: { color: '#aaa' } }, 
-                    x: { ticks: { color: '#666', autoSkip: true, maxTicksLimit: 8 } } 
-                },
-                plugins: { 
-                    legend: { labels: { color: 'white' } },
-                    // TOOLTIP (Cajita de datos) RECUPERADO:
-                    tooltip: {
-                        enabled: true,
-                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                        titleColor: '#3498db',
-                        callbacks: {
-                            title: function(context) {
-                                return 'Tiempo: ' + context[0].label + 's';
-                            }
+        function updateChart(px, py, t) {
+            if(!posChart) return;
+            posChart.data.datasets[0].data.push(px);
+            posChart.data.datasets[0].data.shift();
+            posChart.data.datasets[1].data.push(py);
+            posChart.data.datasets[1].data.shift();
+            posChart.data.labels.push(t);
+            posChart.data.labels.shift();
+            posChart.update('none'); 
+        }
+    </script>
+</body>
+</html>
