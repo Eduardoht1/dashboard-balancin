@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dashboard Balancin de Bola 5.22</title>
+    <title>Dashboard Balancin de Bola 5.23</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <style>
@@ -38,7 +38,7 @@
             gap: 15px;
             max-width: 1400px;
             width: 100%;
-            align-items: stretch; /* CAMBIO: Obliga a ambos paneles a tener exactamente la misma altura */
+            align-items: stretch;
         }
 
         @media (max-width: 850px) {
@@ -56,11 +56,13 @@
             min-height: 200px;
         }
 
-        /* El panel derecho ocupa todo el espacio restante */
+        /* --- CORRECCIÓN DEL CRECIMIENTO --- */
         .panel-right {
             display: flex;
             flex-direction: column;
             height: 100%;
+            min-width: 0; 
+            min-height: 0; /* ESTO DETIENE EL CICLO INFINITO */
         }
 
         h2 { 
@@ -120,15 +122,14 @@
         .chart-container {
             position: relative;
             width: 100%;
-            flex-grow: 1; /* Hace que llene el hueco restante del panel */
-            min-height: 0; /* CAMBIO: Rompe el ciclo infinito de crecimiento de Chart.js */
+            flex-grow: 1; 
+            min-height: 0; 
             background: #222;
             border-radius: 8px;
         }
         
         canvas { 
             border-radius: 8px; 
-            /* CAMBIO: Posición absoluta para forzarlo a respetar a su contenedor padre */
             position: absolute;
             top: 0;
             left: 0;
@@ -169,7 +170,6 @@
         .ghost-3   { width: 10px; height: 10px; z-index: 2; opacity: 0; }
         .ghost-4   { width: 8px;  height: 8px;  z-index: 1; opacity: 0; }
 
-        /* --- ESTILOS DEL PANEL DE AJUSTES INFERIOR --- */
         .tuning-panel {
             background: var(--card);
             padding: 15px;
@@ -200,7 +200,6 @@
             margin-bottom: 2px;
         }
 
-        /* Valor actual en la ESP (Solo lectura) */
         .current-val {
             font-size: 13px;
             color: var(--accent);
@@ -213,7 +212,7 @@
         .tuning-grid input {
             background: #111;
             border: 1px solid #444;
-            color: #f1c40f; /* Amarillo para input */
+            color: #f1c40f; 
             padding: 8px 4px;
             border-radius: 4px;
             font-family: monospace;
@@ -222,7 +221,6 @@
             width: 100%;
             box-sizing: border-box;
             transition: border-color 0.2s;
-            /* Quitar las flechitas */
             -moz-appearance: textfield;
         }
         
@@ -237,7 +235,6 @@
             border-color: var(--accent);
         }
 
-        /* Divisores visuales suaves entre grupos X e Y */
         .col-spx { border-right: 1px solid #444; padding-right: 15px; }
         .col-kpy { padding-left: 15px; }
 
@@ -248,7 +245,6 @@
         }
         .btn-container .btn { width: 300px; margin: 0; }
 
-        /* Colores específicos para Y */
         .label-y { color: #e74c3c !important; }
         .val-y { color: #e74c3c !important; }
 
@@ -256,7 +252,7 @@
 </head>
 <body>
 
-    <h1>Dashboard Control Balancin 5.22</h1>
+    <h1>Dashboard Control Balancin 5.23</h1>
 
     <div class="container">
         <div class="panel" id="mainPanel">
