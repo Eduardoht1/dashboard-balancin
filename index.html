@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dashboard Balancin de Bola 4.1</title>
+    <title>Dashboard Balancin de Bola 4.2</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <style>
@@ -118,7 +118,7 @@
         
         .status-ip { font-size: 11px; color: #777; margin-top: 10px; text-align: center; }
 
-        /* --- ESTILOS PARA EL VISUALIZADOR 2D 4.1 --- */
+        /* --- ESTILOS PARA EL VISUALIZADOR 2D 4.2 CON FANTASMAS --- */
         .touchpad-area {
             position: relative;
             width: 100%;
@@ -137,21 +137,25 @@
         
         .ball-dot {
             position: absolute;
-            width: 16px;
-            height: 16px;
             background: var(--accent);
             border-radius: 50%;
             transform: translate(-50%, -50%); 
-            box-shadow: 0 0 8px var(--accent);
-            transition: top 0.05s linear, left 0.05s linear, opacity 0.3s;
+            transition: top 0.05s linear, left 0.05s linear, opacity 0.3s; /* La transición debe coincidir con la velocidad del ESP */
             top: 50%;
             left: 50%;
         }
+
+        /* Clases específicas para el tamaño y z-index de la estela */
+        .ball-main { width: 16px; height: 16px; box-shadow: 0 0 8px var(--accent); z-index: 10; opacity: 1; }
+        .ghost-1   { width: 14px; height: 14px; z-index: 4; opacity: 0; }
+        .ghost-2   { width: 12px; height: 12px; z-index: 3; opacity: 0; }
+        .ghost-3   { width: 10px; height: 10px; z-index: 2; opacity: 0; }
+        .ghost-4   { width: 8px;  height: 8px;  z-index: 1; opacity: 0; }
     </style>
 </head>
 <body>
 
-    <h1>Dashboard Control Balancin 4.1</h1>
+    <h1>Dashboard Control Balancin 4.2</h1>
 
     <div class="container">
         <div class="panel" id="mainPanel">
@@ -172,7 +176,12 @@
             <div class="touchpad-area" id="touchpadArea">
                 <div class="line-h"></div>
                 <div class="line-v"></div>
-                <div id="ballDot" class="ball-dot"></div>
+                
+                <div id="ghost4" class="ball-dot ghost-4"></div>
+                <div id="ghost3" class="ball-dot ghost-3"></div>
+                <div id="ghost2" class="ball-dot ghost-2"></div>
+                <div id="ghost1" class="ball-dot ghost-1"></div>
+                <div id="ballDot" class="ball-dot ball-main"></div>
             </div>
 
             <div class="motor-grid">
@@ -209,6 +218,9 @@
         let labelsCount = 400; 
         let tiempoInicio = 0; 
         let posChart;
+        
+        // Array para el historial de posiciones del visualizador 2D
+        let posHistory = [];
 
         window.onload = function() {
             const ctx = document.getElementById('chartPos').getContext('2d');
@@ -276,27 +288,51 @@
             document.getElementById('p_errX').innerText = `${((posX_final - 550) / 4.15).toFixed(1)}%`;
             document.getElementById('p_errY').innerText = `${((posY_final - 550) / 4.5).toFixed(1)}%`;
 
-            // --- LÓGICA DEL VISUALIZADOR 2D CON ESCALADO DE HARDWARE 4.1 ---
+            // --- LÓGICA DEL VISUALIZADOR 2D CON ESCALADO 4.1 Y FANTASMAS ---
             const dot = document.getElementById('ballDot');
+            const ghosts = [
+                document.getElementById('ghost1'),
+                document.getElementById('ghost2'),
+                document.getElementById('ghost3'),
+                document.getElementById('ghost4')
+            ];
+
             if (posX_final === 0 && posY_final === 0) {
-                // Sin bola: regresa al centro exacto (50%)
+                // Sin bola: limpia historial, opaca y centra todo
+                posHistory = [];
                 dot.style.opacity = '0.2';
                 dot.style.top = '50%';
                 dot.style.left = '50%';
+                ghosts.forEach(g => g.style.opacity = '0');
             } else {
-                dot.style.opacity = '1';
-                
-                // Mapeo Simétrico para el Eje X (135 a 965 virtual)
-                // 550 - 135 = 415. Rango total virtual = 415 * 2 = 830
+                // Mapeo Simétrico
                 let topPct = ((posX_final - 135) / 830) * 100;
-                
-                // Mapeo Simétrico para el Eje Y (50 a 1050 virtual)
-                // 550 - 50 = 500. Rango total virtual = 500 * 2 = 1000
                 let leftPct = ((posY_final - 50) / 1000) * 100;
                 
-                // Clamping: asegura que el punto no salga del contenedor si hay lecturas extremas
-                dot.style.top = Math.min(Math.max(topPct, 0), 100) + '%';
-                dot.style.left = Math.min(Math.max(leftPct, 0), 100) + '%';
+                // Clamping
+                topPct = Math.min(Math.max(topPct, 0), 100);
+                leftPct = Math.min(Math.max(leftPct, 0), 100);
+
+                // Agregar nueva posición al inicio del historial
+                posHistory.unshift({ top: topPct, left: leftPct });
+                if (posHistory.length > 5) posHistory.pop(); // Mantener solo 5 posiciones
+
+                // Renderizar bola principal
+                dot.style.opacity = '1';
+                dot.style.top = posHistory[0].top + '%';
+                dot.style.left = posHistory[0].left + '%';
+
+                // Renderizar fantasmas con diferentes niveles de opacidad
+                const opacities = [0.6, 0.4, 0.2, 0.1];
+                for (let i = 0; i < 4; i++) {
+                    if (posHistory[i + 1]) {
+                        ghosts[i].style.opacity = opacities[i];
+                        ghosts[i].style.top = posHistory[i + 1].top + '%';
+                        ghosts[i].style.left = posHistory[i + 1].left + '%';
+                    } else {
+                        ghosts[i].style.opacity = '0';
+                    }
+                }
             }
 
             if(data.s1 !== undefined) {
