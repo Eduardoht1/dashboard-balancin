@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dashboard Balancin de Bola 5.4</title>
+    <title>Dashboard Balancin de Bola 5.45</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <style>
@@ -152,7 +152,20 @@
         .line-h { position: absolute; top: 50%; left: 0; width: 100%; height: 1px; border-top: 1px dashed rgba(255,255,255,0.2); }
         .line-v { position: absolute; top: 0; left: 50%; width: 1px; height: 100%; border-left: 1px dashed rgba(255,255,255,0.2); }
         
-        /* NUEVAS: Líneas rojas para los Setpoints */
+        /* NUEVO: Círculo de Tolerancia Fijo */
+        .target-circle {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 23%; /* Basado en tu radio deseado relativo al área total */
+            height: 30.6%; /* Ajustado para el aspect-ratio 4/3 y mantenerlo redondo */
+            border: 1px dashed rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none; /* Para que no interfiera con nada */
+        }
+        
+        /* Líneas rojas para los Setpoints */
         .line-h-sp { position: absolute; top: 50%; left: 0; width: 100%; height: 1px; border-top: 1px dashed rgba(231, 76, 60, 0.8); transition: top 0.2s linear; }
         .line-v-sp { position: absolute; top: 0; left: 50%; width: 1px; height: 100%; border-left: 1px dashed rgba(231, 76, 60, 0.8); transition: left 0.2s linear; }
 
@@ -255,7 +268,7 @@
 </head>
 <body>
 
-    <h1>Dashboard Control Balancin 5.4</h1>
+    <h1>Dashboard Control Balancin 5.45</h1>
 
     <div class="container">
         <div class="panel" id="mainPanel">
@@ -276,6 +289,8 @@
             <div class="touchpad-area" id="touchpadArea">
                 <div class="line-h"></div>
                 <div class="line-v"></div>
+                
+                <div class="target-circle"></div>
                 
                 <div class="line-h-sp" id="spLineH"></div>
                 <div class="line-v-sp" id="spLineV"></div>
