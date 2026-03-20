@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dashboard Balancin de Bola 5.45</title>
+    <title>Dashboard Balancin de Bola 5.5</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <style>
@@ -41,9 +41,26 @@
             align-items: stretch; 
         }
 
+        /* --- CORRECCIONES RESPONSIVAS PARA MÓVILES --- */
         @media (max-width: 850px) {
             .container { grid-template-columns: 1fr; }
             .chart-container { min-height: 350px !important; }
+            
+            /* Romper a 4 columnas para tablets/teléfonos horizontales */
+            .tuning-grid { 
+                grid-template-columns: repeat(4, 1fr) !important; 
+                gap: 15px 10px !important; 
+            }
+            /* Quitar el divisor vertical y los paddings cuando se apilan */
+            .col-spx { border-right: none !important; padding-right: 0 !important; }
+            .col-kpy { padding-left: 0 !important; }
+        }
+
+        @media (max-width: 500px) {
+            /* Romper a 2 columnas para teléfonos en vertical */
+            .tuning-grid { 
+                grid-template-columns: repeat(2, 1fr) !important; 
+            }
         }
 
         .panel {
@@ -152,17 +169,17 @@
         .line-h { position: absolute; top: 50%; left: 0; width: 100%; height: 1px; border-top: 1px dashed rgba(255,255,255,0.2); }
         .line-v { position: absolute; top: 0; left: 50%; width: 1px; height: 100%; border-left: 1px dashed rgba(255,255,255,0.2); }
         
-        /* NUEVO: Círculo de Tolerancia Fijo */
+        /* Círculo de Tolerancia Fijo */
         .target-circle {
             position: absolute;
             top: 50%;
             left: 50%;
-            width: 23%; /* Basado en tu radio deseado relativo al área total */
-            height: 30.6%; /* Ajustado para el aspect-ratio 4/3 y mantenerlo redondo */
+            width: 23%; 
+            height: 30.6%; 
             border: 1px dashed rgba(255, 255, 255, 0.3);
             border-radius: 50%;
             transform: translate(-50%, -50%);
-            pointer-events: none; /* Para que no interfiera con nada */
+            pointer-events: none; 
         }
         
         /* Líneas rojas para los Setpoints */
@@ -268,7 +285,7 @@
 </head>
 <body>
 
-    <h1>Dashboard Control Balancin 5.45</h1>
+    <h1>Dashboard Control Balancin 5.5</h1>
 
     <div class="container">
         <div class="panel" id="mainPanel">
