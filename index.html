@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dashboard Balancín de Bola 5.52</title>
+    <title>Dashboard Balancín de Bola 5.53</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <style>
@@ -54,6 +54,9 @@
             /* Quitar el divisor vertical y los paddings cuando se apilan */
             .col-spx { border-right: none !important; padding-right: 0 !important; }
             .col-kpy { padding-left: 0 !important; }
+            
+            .btn-container { flex-direction: column !important; align-items: center; gap: 10px; }
+            .btn-container .btn { width: 100% !important; margin: 0 !important; }
         }
 
         @media (max-width: 500px) {
@@ -104,6 +107,8 @@
         .btn-on { background-color: var(--success); color: white; }
         .btn-accent { background-color: var(--accent); color: white; margin-top: 10px;}
         .btn-accent:hover { background-color: var(--accent-hover); }
+        .btn-secondary { background-color: #555; color: white; margin-top: 10px;}
+        .btn-secondary:hover { background-color: #666; }
         .btn-disabled { background-color: var(--disabled) !important; color: #666 !important; cursor: not-allowed !important; }
 
         .telemetry-grid, .motor-grid {
@@ -235,6 +240,7 @@
 
         .current-val {
             font-size: 13px;
+            color: var(--accent);
             font-family: monospace;
             font-weight: bold;
             margin-bottom: 6px;
@@ -272,6 +278,7 @@
             display: flex;
             justify-content: center;
             margin-top: 15px;
+            gap: 15px;
         }
         .btn-container .btn { width: 300px; margin: 0; }
 
@@ -290,7 +297,7 @@
 </head>
 <body>
 
-    <h1>Dashboard Control Balancín 5.52</h1>
+    <h1>Dashboard Control Balancín 5.53</h1>
 
     <div class="container">
         <div class="panel" id="mainPanel">
@@ -387,6 +394,7 @@
         </div>
         
         <div class="btn-container">
+            <button class="btn btn-secondary" onclick="restaurarDefaults()">Restaurar Default</button>
             <button class="btn btn-accent" onclick="enviarAjustes()">Aplicar Nuevos Ajustes a ESP</button>
         </div>
     </div>
@@ -406,6 +414,9 @@
         let isESPConnected = false;
         
         let inputsLlenados = false;
+        
+        // Variable para guardar los valores por default
+        let defaultVals = {};
 
         window.onload = function() {
             const ctx = document.getElementById('chartPos').getContext('2d');
@@ -488,20 +499,17 @@
             document.getElementById('p_errX').innerText = `${((posX_final - spx_actual) / 4.15).toFixed(1)}%`;
             document.getElementById('p_errY').innerText = `${((posY_final - spy_actual) / 4.5).toFixed(1)}%`;
 
-            // --- Lógica del Visualizador 2D (Bola y Setpoints) ---
             const dot = document.getElementById('ballDot');
             const ghosts = [
                 document.getElementById('ghost1'), document.getElementById('ghost2'),
                 document.getElementById('ghost3'), document.getElementById('ghost4')
             ];
 
-            // 1. Actualizar las líneas rojas del Setpoint (siempre visibles)
             let spTopPct = Math.min(Math.max(((spx_actual - 135) / 830) * 100, 0), 100);
             let spLeftPct = Math.min(Math.max(((spy_actual - 50) / 1000) * 100, 0), 100);
             document.getElementById('spLineH').style.top = spTopPct + '%';
             document.getElementById('spLineV').style.left = spLeftPct + '%';
 
-            // 2. Actualizar la bola azul
             if (posX_final === 0 && posY_final === 0) {
                 posHistory = [];
                 dot.style.opacity = '0.2';
@@ -546,14 +554,26 @@
                 document.getElementById('curr_spy').innerText = Math.round(spy_actual);
 
                 if(!inputsLlenados) {
-                    document.getElementById('in_kpx').value = data.kpx.toFixed(4);
-                    document.getElementById('in_kix').value = data.kix.toFixed(4);
-                    document.getElementById('in_kdx').value = data.kdx.toFixed(4);
-                    document.getElementById('in_kpy').value = data.kpy.toFixed(4);
-                    document.getElementById('in_kiy').value = data.kiy.toFixed(4);
-                    document.getElementById('in_kdy').value = data.kdy.toFixed(4);
-                    document.getElementById('in_spx').value = spx_actual;
-                    document.getElementById('in_spy').value = spy_actual;
+                    // Guardamos los defaults la primera vez que recibimos datos
+                    defaultVals = {
+                        kpx: data.kpx.toFixed(4),
+                        kix: data.kix.toFixed(4),
+                        kdx: data.kdx.toFixed(4),
+                        spx: spx_actual,
+                        kpy: data.kpy.toFixed(4),
+                        kiy: data.kiy.toFixed(4),
+                        kdy: data.kdy.toFixed(4),
+                        spy: spy_actual
+                    };
+                    
+                    document.getElementById('in_kpx').value = defaultVals.kpx;
+                    document.getElementById('in_kix').value = defaultVals.kix;
+                    document.getElementById('in_kdx').value = defaultVals.kdx;
+                    document.getElementById('in_spx').value = defaultVals.spx;
+                    document.getElementById('in_kpy').value = defaultVals.kpy;
+                    document.getElementById('in_kiy').value = defaultVals.kiy;
+                    document.getElementById('in_kdy').value = defaultVals.kdy;
+                    document.getElementById('in_spy').value = defaultVals.spy;
                     inputsLlenados = true; 
                 }
             }
@@ -581,6 +601,19 @@
                 nEstado.control = !estadoActual.control;
             }
             client.publish(TOPIC_CMD, JSON.stringify(nEstado));
+        }
+        
+        function restaurarDefaults() {
+            if(Object.keys(defaultVals).length > 0) {
+                document.getElementById('in_kpx').value = defaultVals.kpx;
+                document.getElementById('in_kix').value = defaultVals.kix;
+                document.getElementById('in_kdx').value = defaultVals.kdx;
+                document.getElementById('in_spx').value = defaultVals.spx;
+                document.getElementById('in_kpy').value = defaultVals.kpy;
+                document.getElementById('in_kiy').value = defaultVals.kiy;
+                document.getElementById('in_kdy').value = defaultVals.kdy;
+                document.getElementById('in_spy').value = defaultVals.spy;
+            }
         }
 
         function enviarAjustes() {
@@ -654,3 +687,4 @@
     </script>
 </body>
 </html>
+
