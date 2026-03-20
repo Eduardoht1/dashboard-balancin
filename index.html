@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dashboard Balancin de Bola 4.0</title>
+    <title>Dashboard Balancin de Bola 4.1</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <style>
@@ -118,11 +118,11 @@
         
         .status-ip { font-size: 11px; color: #777; margin-top: 10px; text-align: center; }
 
-        /* --- NUEVOS ESTILOS PARA EL VISUALIZADOR 2D --- */
+        /* --- ESTILOS PARA EL VISUALIZADOR 2D 4.1 --- */
         .touchpad-area {
             position: relative;
             width: 100%;
-            aspect-ratio: 4 / 3; /* Y largo (horizontal), X corto (vertical) */
+            aspect-ratio: 4 / 3; 
             background: #1e1e1e;
             border: 2px solid #444;
             border-radius: 8px;
@@ -131,8 +131,9 @@
             box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
         }
 
-        .line-h { position: absolute; top: 55%; left: 0; width: 100%; height: 1px; border-top: 1px dashed rgba(255,255,255,0.2); }
-        .line-v { position: absolute; top: 0; left: 55%; width: 1px; height: 100%; border-left: 1px dashed rgba(255,255,255,0.2); }
+        /* Cruces centradas exactamente al 50% */
+        .line-h { position: absolute; top: 50%; left: 0; width: 100%; height: 1px; border-top: 1px dashed rgba(255,255,255,0.2); }
+        .line-v { position: absolute; top: 0; left: 50%; width: 1px; height: 100%; border-left: 1px dashed rgba(255,255,255,0.2); }
         
         .ball-dot {
             position: absolute;
@@ -140,17 +141,17 @@
             height: 16px;
             background: var(--accent);
             border-radius: 50%;
-            transform: translate(-50%, -50%); /* Centra el punto en la coordenada exacta */
+            transform: translate(-50%, -50%); 
             box-shadow: 0 0 8px var(--accent);
             transition: top 0.05s linear, left 0.05s linear, opacity 0.3s;
-            top: 55%;
-            left: 55%;
+            top: 50%;
+            left: 50%;
         }
     </style>
 </head>
 <body>
 
-    <h1>Dashboard Control Balancin 4.0</h1>
+    <h1>Dashboard Control Balancin 4.1</h1>
 
     <div class="container">
         <div class="panel" id="mainPanel">
@@ -270,27 +271,30 @@
             document.getElementById('v_posY').innerText = Math.round(posY_final);
             document.getElementById('v_errX').innerText = data.errX.toFixed(2);
             document.getElementById('v_errY').innerText = data.errY.toFixed(2);
-            document.getElementById('p_errX').innerText = `${((posX_final - 550) / 5.5).toFixed(1)}%`;
-            document.getElementById('p_errY').innerText = `${((posY_final - 550) / 5.5).toFixed(1)}%`;
+            
+            // Calculo de porcentajes de error simplificado a base de +-500 max
+            document.getElementById('p_errX').innerText = `${((posX_final - 550) / 4.15).toFixed(1)}%`;
+            document.getElementById('p_errY').innerText = `${((posY_final - 550) / 4.5).toFixed(1)}%`;
 
-            // --- LÓGICA DEL VISUALIZADOR 2D ---
+            // --- LÓGICA DEL VISUALIZADOR 2D CON ESCALADO DE HARDWARE 4.1 ---
             const dot = document.getElementById('ballDot');
             if (posX_final === 0 && posY_final === 0) {
-                // Si la bola no está, el punto se opaca y regresa al centro (550 = 55%)
+                // Sin bola: regresa al centro exacto (50%)
                 dot.style.opacity = '0.2';
-                dot.style.top = '55%';
-                dot.style.left = '55%';
+                dot.style.top = '50%';
+                dot.style.left = '50%';
             } else {
-                // Si la bola está, dibujamos su coordenada
                 dot.style.opacity = '1';
                 
-                // Mapeo (asumiendo lectura max 1000): 
-                // Eje X (Vertical, Top-Bottom)
-                let topPct = (posX_final / 1000) * 100;
-                // Eje Y (Horizontal, Left-Right)
-                let leftPct = (posY_final / 1000) * 100;
+                // Mapeo Simétrico para el Eje X (135 a 965 virtual)
+                // 550 - 135 = 415. Rango total virtual = 415 * 2 = 830
+                let topPct = ((posX_final - 135) / 830) * 100;
                 
-                // Restringimos para que el punto no se salga visualmente del cuadro
+                // Mapeo Simétrico para el Eje Y (50 a 1050 virtual)
+                // 550 - 50 = 500. Rango total virtual = 500 * 2 = 1000
+                let leftPct = ((posY_final - 50) / 1000) * 100;
+                
+                // Clamping: asegura que el punto no salga del contenedor si hay lecturas extremas
                 dot.style.top = Math.min(Math.max(topPct, 0), 100) + '%';
                 dot.style.left = Math.min(Math.max(leftPct, 0), 100) + '%';
             }
