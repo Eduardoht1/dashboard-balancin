@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dashboard Balancin de Bola 5.35</title>
+    <title>Dashboard Balancin de Bola 5.4</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <style>
@@ -38,7 +38,7 @@
             gap: 15px;
             max-width: 1400px;
             width: 100%;
-            align-items: stretch; /* Obliga a la gráfica a medir lo mismo que el panel izquierdo */
+            align-items: stretch; 
         }
 
         @media (max-width: 850px) {
@@ -59,7 +59,7 @@
         .panel-right {
             display: flex;
             flex-direction: column;
-            min-height: 0; /* Evita que este panel crezca infinitamente */
+            min-height: 0; 
         }
 
         h2 { 
@@ -85,7 +85,7 @@
 
         .btn-off { background-color: var(--danger); color: white; }
         .btn-on { background-color: var(--success); color: white; }
-        .btn-accent { background-color: var(--accent); color: white; }
+        .btn-accent { background-color: var(--accent); color: white; margin-top: 10px;}
         .btn-accent:hover { background-color: var(--accent-hover); }
         .btn-disabled { background-color: var(--disabled) !important; color: #666 !important; cursor: not-allowed !important; }
 
@@ -119,15 +119,14 @@
         .chart-container {
             position: relative;
             width: 100%;
-            flex-grow: 1; /* Llenará solo el espacio dictado por la cuadrícula */
-            min-height: 0; /* Detiene el empuje de chart.js */
+            flex-grow: 1; 
+            min-height: 0; 
             background: #222;
             border-radius: 8px;
         }
         
         canvas { 
             border-radius: 8px; 
-            /* Se ancla estrictamente a las dimensiones dadas por chart-container */
             position: absolute !important;
             top: 0;
             left: 0;
@@ -149,9 +148,14 @@
             box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
         }
 
+        /* Líneas grises originales del centro (50%) */
         .line-h { position: absolute; top: 50%; left: 0; width: 100%; height: 1px; border-top: 1px dashed rgba(255,255,255,0.2); }
         .line-v { position: absolute; top: 0; left: 50%; width: 1px; height: 100%; border-left: 1px dashed rgba(255,255,255,0.2); }
         
+        /* NUEVAS: Líneas rojas para los Setpoints */
+        .line-h-sp { position: absolute; top: 50%; left: 0; width: 100%; height: 1px; border-top: 1px dashed rgba(231, 76, 60, 0.8); transition: top 0.2s linear; }
+        .line-v-sp { position: absolute; top: 0; left: 50%; width: 1px; height: 100%; border-left: 1px dashed rgba(231, 76, 60, 0.8); transition: left 0.2s linear; }
+
         .ball-dot {
             position: absolute;
             background: var(--accent);
@@ -160,15 +164,15 @@
             transition: top 0.05s linear, left 0.05s linear, opacity 0.3s; 
             top: 50%;
             left: 50%;
+            z-index: 10;
         }
 
-        .ball-main { width: 16px; height: 16px; box-shadow: 0 0 8px var(--accent); z-index: 10; opacity: 1; }
+        .ball-main { width: 16px; height: 16px; box-shadow: 0 0 8px var(--accent); opacity: 1; }
         .ghost-1   { width: 14px; height: 14px; z-index: 4; opacity: 0; }
         .ghost-2   { width: 12px; height: 12px; z-index: 3; opacity: 0; }
         .ghost-3   { width: 10px; height: 10px; z-index: 2; opacity: 0; }
         .ghost-4   { width: 8px;  height: 8px;  z-index: 1; opacity: 0; }
 
-        /* --- ESTILOS DEL PANEL DE AJUSTES INFERIOR --- */
         .tuning-panel {
             background: var(--card);
             padding: 15px;
@@ -199,7 +203,6 @@
             margin-bottom: 2px;
         }
 
-        /* Valor actual en la ESP (Solo lectura) */
         .current-val {
             font-size: 13px;
             color: var(--accent);
@@ -252,7 +255,7 @@
 </head>
 <body>
 
-    <h1>Dashboard Control Balancin 5.35</h1>
+    <h1>Dashboard Control Balancin 5.4</h1>
 
     <div class="container">
         <div class="panel" id="mainPanel">
@@ -273,6 +276,9 @@
             <div class="touchpad-area" id="touchpadArea">
                 <div class="line-h"></div>
                 <div class="line-v"></div>
+                
+                <div class="line-h-sp" id="spLineH"></div>
+                <div class="line-v-sp" id="spLineV"></div>
                 
                 <div id="ghost4" class="ball-dot ghost-4"></div>
                 <div id="ghost3" class="ball-dot ghost-3"></div>
@@ -445,12 +451,20 @@
             document.getElementById('p_errX').innerText = `${((posX_final - spx_actual) / 4.15).toFixed(1)}%`;
             document.getElementById('p_errY').innerText = `${((posY_final - spy_actual) / 4.5).toFixed(1)}%`;
 
+            // --- Lógica del Visualizador 2D (Bola y Setpoints) ---
             const dot = document.getElementById('ballDot');
             const ghosts = [
                 document.getElementById('ghost1'), document.getElementById('ghost2'),
                 document.getElementById('ghost3'), document.getElementById('ghost4')
             ];
 
+            // 1. Actualizar las líneas rojas del Setpoint (siempre visibles)
+            let spTopPct = Math.min(Math.max(((spx_actual - 135) / 830) * 100, 0), 100);
+            let spLeftPct = Math.min(Math.max(((spy_actual - 50) / 1000) * 100, 0), 100);
+            document.getElementById('spLineH').style.top = spTopPct + '%';
+            document.getElementById('spLineV').style.left = spLeftPct + '%';
+
+            // 2. Actualizar la bola azul
             if (posX_final === 0 && posY_final === 0) {
                 posHistory = [];
                 dot.style.opacity = '0.2';
