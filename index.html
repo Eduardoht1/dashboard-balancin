@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dashboard Balancin de Bola 5.5</title>
+    <title>Dashboard Balancin de Bola 5.51</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <style>
@@ -235,7 +235,6 @@
 
         .current-val {
             font-size: 13px;
-            color: var(--accent);
             font-family: monospace;
             font-weight: bold;
             margin-bottom: 6px;
@@ -245,7 +244,6 @@
         .tuning-grid input {
             background: #111;
             border: 1px solid #444;
-            color: #f1c40f; 
             padding: 8px 4px;
             border-radius: 4px;
             font-family: monospace;
@@ -265,7 +263,6 @@
 
         .tuning-grid input:focus {
             outline: none;
-            border-color: var(--accent);
         }
 
         .col-spx { border-right: 1px solid #444; padding-right: 15px; }
@@ -278,14 +275,22 @@
         }
         .btn-container .btn { width: 300px; margin: 0; }
 
-        .label-y { color: #e74c3c !important; }
-        .val-y { color: #e74c3c !important; }
+        /* --- NUEVOS COLORES PARA X e Y --- */
+        .label-x { color: var(--accent) !important; }
+        .val-x { color: var(--accent) !important; }
+        .input-x { color: var(--accent) !important; }
+        .input-x:focus { border-color: var(--accent) !important; }
+
+        .label-y { color: var(--danger) !important; }
+        .val-y { color: var(--danger) !important; }
+        .input-y { color: var(--danger) !important; }
+        .input-y:focus { border-color: var(--danger) !important; }
 
     </style>
 </head>
 <body>
 
-    <h1>Dashboard Control Balancin 5.5</h1>
+    <h1>Dashboard Control Balancin 5.51</h1>
 
     <div class="container">
         <div class="panel" id="mainPanel">
@@ -339,45 +344,45 @@
         
         <div class="tuning-grid">
             <div class="input-group">
-                <label>Kp X</label>
-                <div class="current-val" id="curr_kpx">0.000</div>
-                <input type="number" id="in_kpx" step="0.001">
+                <label class="label-x">Kp X</label>
+                <div class="current-val val-x" id="curr_kpx">0.000</div>
+                <input type="number" id="in_kpx" step="0.001" class="input-x">
             </div>
             <div class="input-group">
-                <label>Ki X</label>
-                <div class="current-val" id="curr_kix">0.000</div>
-                <input type="number" id="in_kix" step="0.001">
+                <label class="label-x">Ki X</label>
+                <div class="current-val val-x" id="curr_kix">0.000</div>
+                <input type="number" id="in_kix" step="0.001" class="input-x">
             </div>
             <div class="input-group">
-                <label>Kd X</label>
-                <div class="current-val" id="curr_kdx">0.000</div>
-                <input type="number" id="in_kdx" step="0.001">
+                <label class="label-x">Kd X</label>
+                <div class="current-val val-x" id="curr_kdx">0.000</div>
+                <input type="number" id="in_kdx" step="0.001" class="input-x">
             </div>
             <div class="input-group col-spx">
-                <label style="color: var(--accent);">Setpoint X</label>
-                <div class="current-val" id="curr_spx">550</div>
-                <input type="number" id="in_spx" step="1">
+                <label class="label-x">Setpoint X</label>
+                <div class="current-val val-x" id="curr_spx">550</div>
+                <input type="number" id="in_spx" step="1" class="input-x">
             </div>
 
             <div class="input-group col-kpy">
                 <label class="label-y">Kp Y</label>
                 <div class="current-val val-y" id="curr_kpy">0.000</div>
-                <input type="number" id="in_kpy" step="0.001">
+                <input type="number" id="in_kpy" step="0.001" class="input-y">
             </div>
             <div class="input-group">
                 <label class="label-y">Ki Y</label>
                 <div class="current-val val-y" id="curr_kiy">0.000</div>
-                <input type="number" id="in_kiy" step="0.001">
+                <input type="number" id="in_kiy" step="0.001" class="input-y">
             </div>
             <div class="input-group">
                 <label class="label-y">Kd Y</label>
                 <div class="current-val val-y" id="curr_kdy">0.000</div>
-                <input type="number" id="in_kdy" step="0.001">
+                <input type="number" id="in_kdy" step="0.001" class="input-y">
             </div>
             <div class="input-group">
                 <label class="label-y">Setpoint Y</label>
                 <div class="current-val val-y" id="curr_spy">550</div>
-                <input type="number" id="in_spy" step="1">
+                <input type="number" id="in_spy" step="1" class="input-y">
             </div>
         </div>
         
