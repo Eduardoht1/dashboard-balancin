@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dashboard Balancin de Bola 5.33</title>
+    <title>Dashboard Balancin de Bola 5.34</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <style>
@@ -28,9 +28,10 @@
             align-items: center;
             padding: 10px;
             box-sizing: border-box;
+            height: 100vh; /* Asegurar que ocupe todo el alto disponible */
         }
 
-        h1 { margin-bottom: 15px; font-size: 22px; text-align: center; }
+        h1 { margin-bottom: 15px; font-size: 22px; text-align: center; flex-shrink: 0; }
 
         .container {
             display: grid;
@@ -38,12 +39,14 @@
             gap: 15px;
             max-width: 1400px;
             width: 100%;
-            align-items: stretch; /* CAMBIO 1: Obliga a ambos paneles a tener exactamente la misma altura */
+            flex-grow: 1; /* Hace que el contenedor principal ocupe el resto de la pantalla */
+            align-items: stretch;
+            min-height: 0; /* Clave para evitar el crecimiento infinito */
         }
 
         @media (max-width: 850px) {
             .container { grid-template-columns: 1fr; }
-            .chart-container { height: 350px !important; }
+            .panel-right { min-height: 400px; } /* Altura mínima en móviles */
         }
 
         .panel {
@@ -53,13 +56,13 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
             display: flex;
             flex-direction: column;
-            min-height: 200px;
         }
 
         .panel-right {
             display: flex;
             flex-direction: column;
-            min-height: 0; /* CAMBIO 2: Evita que este panel crezca infinitamente */
+            /* La altura ya está dictada por el stretch de la grid */
+            min-height: 0;
         }
 
         h2 { 
@@ -69,6 +72,7 @@
             padding-bottom: 8px;
             text-align: center;
             font-size: 16px;
+            flex-shrink: 0;
         }
 
         .btn {
@@ -85,7 +89,7 @@
 
         .btn-off { background-color: var(--danger); color: white; }
         .btn-on { background-color: var(--success); color: white; }
-        .btn-accent { background-color: var(--accent); color: white; }
+        .btn-accent { background-color: var(--accent); color: white; margin-top: 10px; }
         .btn-accent:hover { background-color: var(--accent-hover); }
         .btn-disabled { background-color: var(--disabled) !important; color: #666 !important; cursor: not-allowed !important; }
 
@@ -101,6 +105,7 @@
             margin-top: 10px;
             border-top: 1px dashed #444;
             padding-top: 10px;
+            margin-bottom: 15px;
         }
 
         .data-box {
@@ -116,18 +121,18 @@
         .pid-value { font-size: 12px; color: #f1c40f; font-weight: bold; }
         .percent-val { font-size: 11px; color: #aaa; margin-left: 4px; }
 
-        .chart-container {
+        /* --- CONTENEDOR MÁGICO PARA CHART.JS --- */
+        .chart-wrapper {
             position: relative;
+            flex-grow: 1; /* Ocupa el espacio restante del panel derecho */
             width: 100%;
-            flex-grow: 1; 
-            min-height: 0; /* CAMBIO 3: Quitamos los 520px. Ahora depende del panel izquierdo */
+            min-height: 0; /* Detiene el desbordamiento flex */
             background: #222;
             border-radius: 8px;
+            overflow: hidden;
         }
         
         canvas { 
-            border-radius: 8px; 
-            /* CAMBIO 4: Amarramos el canvas a su contenedor para que no lo empuje */
             position: absolute !important;
             top: 0;
             left: 0;
@@ -147,6 +152,7 @@
             margin-top: 15px;
             overflow: hidden;
             box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
+            flex-shrink: 0;
         }
 
         .line-h { position: absolute; top: 50%; left: 0; width: 100%; height: 1px; border-top: 1px dashed rgba(255,255,255,0.2); }
@@ -168,60 +174,75 @@
         .ghost-3   { width: 10px; height: 10px; z-index: 2; opacity: 0; }
         .ghost-4   { width: 8px;  height: 8px;  z-index: 1; opacity: 0; }
 
-        /* --- ESTILOS DEL PANEL DE AJUSTES INFERIOR --- */
-        .tuning-panel {
-            background: var(--card);
-            padding: 15px;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            margin-top: 15px;
-            width: 100%;
-            max-width: 1400px;
-            box-sizing: border-box;
+        .tuning-section {
+            border-top: 1px solid #444;
+            padding-top: 15px;
+            margin-top: auto; 
         }
 
         .tuning-grid {
             display: grid;
-            grid-template-columns: repeat(8, 1fr);
+            grid-template-columns: 1fr 1fr; 
             gap: 15px;
-            align-items: end;
         }
+
+        .axis-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .axis-title {
+            font-size: 13px;
+            font-weight: bold;
+            text-align: center;
+            border-bottom: 1px dashed #444;
+            padding-bottom: 4px;
+            margin-bottom: 4px;
+        }
+        
+        .axis-title-x { color: var(--accent); }
+        .axis-title-y { color: #e74c3c; }
 
         .input-group {
             display: flex;
             flex-direction: column;
             align-items: center;
+            background: #222;
+            padding: 6px;
+            border-radius: 6px;
+            border: 1px solid #333;
         }
 
         .input-group label {
-            font-size: 11px;
+            font-size: 10px;
             color: #888;
             margin-bottom: 2px;
         }
 
-        /* Valor actual en la ESP (Solo lectura) */
         .current-val {
             font-size: 13px;
-            color: var(--accent);
             font-family: monospace;
             font-weight: bold;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
             text-align: center;
         }
+
+        .val-x { color: var(--accent); }
+        .val-y { color: #e74c3c; }
 
         .tuning-grid input {
             background: #111;
             border: 1px solid #444;
-            color: #f1c40f; /* Amarillo para input */
-            padding: 8px 4px;
+            color: #f1c40f; 
+            padding: 6px;
             border-radius: 4px;
             font-family: monospace;
-            font-size: 14px;
+            font-size: 13px;
             text-align: center;
             width: 100%;
             box-sizing: border-box;
             transition: border-color 0.2s;
-            /* Quitar las flechitas */
             -moz-appearance: textfield;
         }
         
@@ -233,29 +254,16 @@
 
         .tuning-grid input:focus {
             outline: none;
-            border-color: var(--accent);
+            border-color: #f1c40f;
         }
 
-        /* Divisores visuales suaves entre grupos X e Y */
-        .col-spx { border-right: 1px solid #444; padding-right: 15px; }
-        .col-kpy { padding-left: 15px; }
-
-        .btn-container {
-            display: flex;
-            justify-content: center;
-            margin-top: 15px;
-        }
-        .btn-container .btn { width: 300px; margin: 0; }
-
-        /* Colores específicos para Y */
-        .label-y { color: #e74c3c !important; }
-        .val-y { color: #e74c3c !important; }
+        .btn-container { margin-top: 15px; }
 
     </style>
 </head>
 <body>
 
-    <h1>Dashboard Control Balancin 5.33</h1>
+    <h1>Dashboard Control Balancin 5.34</h1>
 
     <div class="container">
         <div class="panel" id="mainPanel">
@@ -289,65 +297,74 @@
                 <div class="data-box"><span class="data-label">Servo 2</span><span id="v_s2" class="pid-value">0°</span></div>
                 <div class="data-box"><span class="data-label">Servo 3</span><span id="v_s3" class="pid-value">0°</span></div>
             </div>
+
+            <div class="tuning-section">
+                <h2>Sintonización en Vivo</h2>
+                <div class="tuning-grid">
+                    
+                    <div class="axis-group">
+                        <div class="axis-title axis-title-x">EJE X</div>
+                        
+                        <div class="input-group">
+                            <label>Kp</label>
+                            <div class="current-val val-x" id="curr_kpx">0.000</div>
+                            <input type="number" id="in_kpx" step="0.001">
+                        </div>
+                        <div class="input-group">
+                            <label>Ki</label>
+                            <div class="current-val val-x" id="curr_kix">0.000</div>
+                            <input type="number" id="in_kix" step="0.001">
+                        </div>
+                        <div class="input-group">
+                            <label>Kd</label>
+                            <div class="current-val val-x" id="curr_kdx">0.000</div>
+                            <input type="number" id="in_kdx" step="0.001">
+                        </div>
+                        <div class="input-group">
+                            <label>Setpoint</label>
+                            <div class="current-val val-x" id="curr_spx">550</div>
+                            <input type="number" id="in_spx" step="1">
+                        </div>
+                    </div>
+
+                    <div class="axis-group">
+                        <div class="axis-title axis-title-y">EJE Y</div>
+                        
+                        <div class="input-group">
+                            <label>Kp</label>
+                            <div class="current-val val-y" id="curr_kpy">0.000</div>
+                            <input type="number" id="in_kpy" step="0.001">
+                        </div>
+                        <div class="input-group">
+                            <label>Ki</label>
+                            <div class="current-val val-y" id="curr_kiy">0.000</div>
+                            <input type="number" id="in_kiy" step="0.001">
+                        </div>
+                        <div class="input-group">
+                            <label>Kd</label>
+                            <div class="current-val val-y" id="curr_kdy">0.000</div>
+                            <input type="number" id="in_kdy" step="0.001">
+                        </div>
+                        <div class="input-group">
+                            <label>Setpoint</label>
+                            <div class="current-val val-y" id="curr_spy">550</div>
+                            <input type="number" id="in_spy" step="1">
+                        </div>
+                    </div>
+
+                </div>
+                
+                <div class="btn-container">
+                    <button class="btn btn-accent" id="btnAjustes" onclick="enviarAjustes()">Enviar Ajustes a ESP32</button>
+                </div>
+            </div>
         </div>
 
         <div class="panel panel-right">
             <h2>Posición Histórica</h2>
-            <div class="chart-container">
+            <div class="chart-wrapper">
                 <canvas id="chartPos"></canvas>
             </div>
-        </div>
-    </div>
-
-    <div class="tuning-panel">
-        <h2>Ajustes de Control (Sintonización en Vivo)</h2>
-        
-        <div class="tuning-grid">
-            <div class="input-group">
-                <label>Kp X</label>
-                <div class="current-val" id="curr_kpx">0.000</div>
-                <input type="number" id="in_kpx" step="0.001">
-            </div>
-            <div class="input-group">
-                <label>Ki X</label>
-                <div class="current-val" id="curr_kix">0.000</div>
-                <input type="number" id="in_kix" step="0.001">
-            </div>
-            <div class="input-group">
-                <label>Kd X</label>
-                <div class="current-val" id="curr_kdx">0.000</div>
-                <input type="number" id="in_kdx" step="0.001">
-            </div>
-            <div class="input-group col-spx">
-                <label style="color: var(--accent);">Setpoint X</label>
-                <div class="current-val" id="curr_spx">550</div>
-                <input type="number" id="in_spx" step="1">
-            </div>
-
-            <div class="input-group col-kpy">
-                <label class="label-y">Kp Y</label>
-                <div class="current-val val-y" id="curr_kpy">0.000</div>
-                <input type="number" id="in_kpy" step="0.001">
-            </div>
-            <div class="input-group">
-                <label class="label-y">Ki Y</label>
-                <div class="current-val val-y" id="curr_kiy">0.000</div>
-                <input type="number" id="in_kiy" step="0.001">
-            </div>
-            <div class="input-group">
-                <label class="label-y">Kd Y</label>
-                <div class="current-val val-y" id="curr_kdy">0.000</div>
-                <input type="number" id="in_kdy" step="0.001">
-            </div>
-            <div class="input-group">
-                <label class="label-y">Setpoint Y</label>
-                <div class="current-val val-y" id="curr_spy">550</div>
-                <input type="number" id="in_spy" step="1">
-            </div>
-        </div>
-        
-        <div class="btn-container">
-            <button class="btn btn-accent" onclick="enviarAjustes()">Aplicar Nuevos Ajustes a ESP32</button>
         </div>
     </div>
 
@@ -358,7 +375,7 @@
         const client = mqtt.connect('wss://broker.hivemq.com:8884/mqtt');
 
         let estadoActual = { motores: false, control: false };
-        let labelsCount = 400; 
+        let labelsCount = 200; 
         let tiempoInicio = 0; 
         let posChart;
         let posHistory = [];
@@ -387,7 +404,15 @@
                     interaction: { mode: 'index', intersect: false },
                     scales: { 
                         y: { min: 0, max: 1000, grid: { color: '#333' }, ticks: { color: '#aaa' } }, 
-                        x: { ticks: { color: '#666', autoSkip: true, maxTicksLimit: 8 } } 
+                        x: { 
+                            grid: { color: '#333' },
+                            ticks: { 
+                                color: '#666', 
+                                autoSkip: true, 
+                                maxTicksLimit: 10,
+                                maxRotation: 0
+                            } 
+                        } 
                     },
                     plugins: { 
                         legend: { labels: { color: 'white' } },
@@ -470,4 +495,140 @@
                 dot.style.top = posHistory[0].top + '%';
                 dot.style.left = posHistory[0].left + '%';
 
-                const opacities =
+                const opacities = [0.6, 0.4, 0.2, 0.1];
+                for (let i = 0; i < 4; i++) {
+                    if (posHistory[i + 1]) {
+                        ghosts[i].style.opacity = opacities[i];
+                        ghosts[i].style.top = posHistory[i + 1].top + '%';
+                        ghosts[i].style.left = posHistory[i + 1].left + '%';
+                    } else { ghosts[i].style.opacity = '0'; }
+                }
+            }
+
+            if(data.s1 !== undefined) {
+                document.getElementById('v_s1').innerText = Math.round(data.s1) + "°";
+                document.getElementById('v_s2').innerText = Math.round(data.s2) + "°";
+                document.getElementById('v_s3').innerText = Math.round(data.s3) + "°";
+            }
+
+            if(data.kpx !== undefined) {
+                
+                document.getElementById('curr_kpx').innerText = data.kpx.toFixed(4);
+                document.getElementById('curr_kix').innerText = data.kix.toFixed(4);
+                document.getElementById('curr_kdx').innerText = data.kdx.toFixed(4);
+                document.getElementById('curr_spx').innerText = Math.round(spx_actual);
+                
+                document.getElementById('curr_kpy').innerText = data.kpy.toFixed(4);
+                document.getElementById('curr_kiy').innerText = data.kiy.toFixed(4);
+                document.getElementById('curr_kdy').innerText = data.kdy.toFixed(4);
+                document.getElementById('curr_spy').innerText = Math.round(spy_actual);
+
+                if(!inputsLlenados) {
+                    document.getElementById('in_kpx').value = data.kpx.toFixed(4);
+                    document.getElementById('in_kix').value = data.kix.toFixed(4);
+                    document.getElementById('in_kdx').value = data.kdx.toFixed(4);
+                    document.getElementById('in_kpy').value = data.kpy.toFixed(4);
+                    document.getElementById('in_kiy').value = data.kiy.toFixed(4);
+                    document.getElementById('in_kdy').value = data.kdy.toFixed(4);
+                    document.getElementById('in_spx').value = spx_actual;
+                    document.getElementById('in_spy').value = spy_actual;
+                    inputsLlenados = true; 
+                }
+            }
+
+            if (estadoActual.control && posChart) {
+                if(tiempoInicio === 0) tiempoInicio = Date.now();
+                let tActual = ((Date.now() - tiempoInicio) / 1000).toFixed(2);
+                updateChart(posX_final, posY_final, spx_actual, spy_actual, tActual);
+            } else {
+                tiempoInicio = 0;
+            }
+        });
+
+        client.on('error', (err) => {
+            document.getElementById('mqttStatus').innerText = "Fallo: " + err;
+            document.getElementById('mqttStatus').style.color = "#e74c3c";
+        });
+
+        function sendCmd(tipo) {
+            let nEstado = { ...estadoActual };
+            if (tipo === 'motores') {
+                nEstado.motores = !estadoActual.motores;
+                if(!nEstado.motores) nEstado.control = false;
+            } else {
+                nEstado.control = !estadoActual.control;
+            }
+            client.publish(TOPIC_CMD, JSON.stringify(nEstado));
+        }
+
+        function enviarAjustes() {
+            let payload = {};
+            
+            let kpx = parseFloat(document.getElementById('in_kpx').value);
+            let kix = parseFloat(document.getElementById('in_kix').value);
+            let kdx = parseFloat(document.getElementById('in_kdx').value);
+            if(!isNaN(kpx) && !isNaN(kix) && !isNaN(kdx)) { payload.kpx = kpx; payload.kix = kix; payload.kdx = kdx; }
+
+            let kpy = parseFloat(document.getElementById('in_kpy').value);
+            let kiy = parseFloat(document.getElementById('in_kiy').value);
+            let kdy = parseFloat(document.getElementById('in_kdy').value);
+            if(!isNaN(kpy) && !isNaN(kiy) && !isNaN(kdy)) { payload.kpy = kpy; payload.kiy = kiy; payload.kdy = kdy; }
+
+            let spx = parseFloat(document.getElementById('in_spx').value);
+            let spy = parseFloat(document.getElementById('in_spy').value);
+            if(!isNaN(spx)) payload.spx = spx;
+            if(!isNaN(spy)) payload.spy = spy;
+
+            if(Object.keys(payload).length > 0) {
+                client.publish(TOPIC_CMD, JSON.stringify(payload));
+                
+                const btn = document.getElementById('btnAjustes');
+                const textOrig = btn.innerText;
+                btn.innerText = "¡Enviado!";
+                btn.style.backgroundColor = "#2ecc71";
+                setTimeout(() => {
+                    btn.innerText = textOrig;
+                    btn.style.backgroundColor = "var(--accent)";
+                }, 1000);
+            }
+        }
+
+        function actualizarUI() {
+            const btnM = document.getElementById('btnMotores');
+            const btnC = document.getElementById('btnControl');
+            btnM.className = estadoActual.motores ? "btn btn-on" : "btn btn-off";
+            btnM.innerText = `MOTORES: ${estadoActual.motores ? 'ON' : 'OFF'}`;
+            if (!estadoActual.motores) {
+                btnC.disabled = true;
+                btnC.className = "btn btn-disabled";
+                btnC.innerText = "CONTROL PID: OFF";
+            } else {
+                btnC.disabled = false;
+                btnC.className = estadoActual.control ? "btn btn-on" : "btn btn-off";
+                btnC.innerText = `CONTROL PID: ${estadoActual.control ? 'ON' : 'OFF'}`;
+            }
+        }
+
+        function resetChart(spx, spy) {
+            if(!posChart) return;
+            posChart.data.labels = Array(labelsCount).fill("0.00");
+            posChart.data.datasets[0].data = Array(labelsCount).fill(spx);
+            posChart.data.datasets[1].data = Array(labelsCount).fill(spy);
+            posChart.data.datasets[2].data = Array(labelsCount).fill(spx);
+            posChart.data.datasets[3].data = Array(labelsCount).fill(spy);
+            posChart.update('none');
+        }
+
+        function updateChart(px, py, spx, spy, t) {
+            if(!posChart) return;
+            posChart.data.datasets[0].data.push(px); posChart.data.datasets[0].data.shift();
+            posChart.data.datasets[1].data.push(py); posChart.data.datasets[1].data.shift();
+            posChart.data.datasets[2].data.push(spx); posChart.data.datasets[2].data.shift();
+            posChart.data.datasets[3].data.push(spy); posChart.data.datasets[3].data.shift();
+            
+            posChart.data.labels.push(t); posChart.data.labels.shift();
+            posChart.update('none'); 
+        }
+    </script>
+</body>
+</html>
