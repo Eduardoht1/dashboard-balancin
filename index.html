@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dashboard Balancin de Bola 4.21</title>
+    <title>Dashboard Balancin de Bola 4.211</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <style>
@@ -155,7 +155,7 @@
 </head>
 <body>
 
-    <h1>Dashboard Control Balancin 4.21</h1>
+    <h1>Dashboard Control Balancin 4.211</h1>
 
     <div class="container">
         <div class="panel" id="mainPanel">
@@ -279,7 +279,7 @@
             clearTimeout(timeoutESP);
             timeoutESP = setTimeout(() => {
                 isESPConnected = false;
-                document.getElementById('mqttStatus').innerText = "Conectado a la Nube (WSS) - ESP Desconectada";
+                document.getElementById('mqttStatus').innerText = "Conectado a la Nube (WSS) - Sin conexión a la ESP";
                 document.getElementById('mqttStatus').style.color = "#e74c3c"; // Rojo
             }, 1000); // 1 segundo sin mensajes = desconectado
             // -------------------------------------------------
