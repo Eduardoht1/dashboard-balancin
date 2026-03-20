@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dashboard Balancin de Bola 3.4</title>
+    <title>Dashboard Balancin de Bola 4.0</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <style>
@@ -114,14 +114,43 @@
             background: #222;
             border-radius: 8px;
         }
-
         canvas { border-radius: 8px; }
+        
         .status-ip { font-size: 11px; color: #777; margin-top: 10px; text-align: center; }
+
+        /* --- NUEVOS ESTILOS PARA EL VISUALIZADOR 2D --- */
+        .touchpad-area {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 4 / 3; /* Y largo (horizontal), X corto (vertical) */
+            background: #1e1e1e;
+            border: 2px solid #444;
+            border-radius: 8px;
+            margin-top: 15px;
+            overflow: hidden;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
+        }
+
+        .line-h { position: absolute; top: 55%; left: 0; width: 100%; height: 1px; border-top: 1px dashed rgba(255,255,255,0.2); }
+        .line-v { position: absolute; top: 0; left: 55%; width: 1px; height: 100%; border-left: 1px dashed rgba(255,255,255,0.2); }
+        
+        .ball-dot {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background: var(--accent);
+            border-radius: 50%;
+            transform: translate(-50%, -50%); /* Centra el punto en la coordenada exacta */
+            box-shadow: 0 0 8px var(--accent);
+            transition: top 0.05s linear, left 0.05s linear, opacity 0.3s;
+            top: 55%;
+            left: 55%;
+        }
     </style>
 </head>
 <body>
 
-    <h1>Dashboard Control Balancin 3.4</h1>
+    <h1>Dashboard Control Balancin 4.0</h1>
 
     <div class="container">
         <div class="panel" id="mainPanel">
@@ -136,6 +165,13 @@
                 <div class="data-box"><span class="data-label">Pos Y</span><span id="v_posY" class="data-value">0</span></div>
                 <div class="data-box"><span class="data-label">Error X</span><span id="v_errX" class="data-value">0.00</span><span id="p_errX" class="percent-val">0%</span></div>
                 <div class="data-box"><span class="data-label">Error Y</span><span id="v_errY" class="data-value">0.00</span><span id="p_errY" class="percent-val">0%</span></div>
+            </div>
+
+            <h2 style="margin-top: 15px;">Vista 2D (Touchpad)</h2>
+            <div class="touchpad-area" id="touchpadArea">
+                <div class="line-h"></div>
+                <div class="line-v"></div>
+                <div id="ballDot" class="ball-dot"></div>
             </div>
 
             <div class="motor-grid">
@@ -155,7 +191,7 @@
         </div>
 
         <div class="panel">
-            <h2>Posición de la Bola</h2>
+            <h2>Posición Histórica</h2>
             <div class="chart-container">
                 <canvas id="chartPos"></canvas>
             </div>
@@ -218,7 +254,6 @@
             const data = JSON.parse(message.toString());
             
             if(data.m_on !== undefined) {
-                // Detectar si el control se encendió (Sincronización y Reset)
                 if (data.c_on === true && estadoActual.control === false) {
                     resetChart();
                     tiempoInicio = Date.now();
@@ -237,6 +272,28 @@
             document.getElementById('v_errY').innerText = data.errY.toFixed(2);
             document.getElementById('p_errX').innerText = `${((posX_final - 550) / 5.5).toFixed(1)}%`;
             document.getElementById('p_errY').innerText = `${((posY_final - 550) / 5.5).toFixed(1)}%`;
+
+            // --- LÓGICA DEL VISUALIZADOR 2D ---
+            const dot = document.getElementById('ballDot');
+            if (posX_final === 0 && posY_final === 0) {
+                // Si la bola no está, el punto se opaca y regresa al centro (550 = 55%)
+                dot.style.opacity = '0.2';
+                dot.style.top = '55%';
+                dot.style.left = '55%';
+            } else {
+                // Si la bola está, dibujamos su coordenada
+                dot.style.opacity = '1';
+                
+                // Mapeo (asumiendo lectura max 1000): 
+                // Eje X (Vertical, Top-Bottom)
+                let topPct = (posX_final / 1000) * 100;
+                // Eje Y (Horizontal, Left-Right)
+                let leftPct = (posY_final / 1000) * 100;
+                
+                // Restringimos para que el punto no se salga visualmente del cuadro
+                dot.style.top = Math.min(Math.max(topPct, 0), 100) + '%';
+                dot.style.left = Math.min(Math.max(leftPct, 0), 100) + '%';
+            }
 
             if(data.s1 !== undefined) {
                 document.getElementById('v_s1').innerText = Math.round(data.s1) + "°";
