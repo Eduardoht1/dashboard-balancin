@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dashboard Balancin de Bola 4.2</title>
+    <title>Dashboard Balancin de Bola 4.21</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <style>
@@ -116,7 +116,7 @@
         }
         canvas { border-radius: 8px; }
         
-        .status-ip { font-size: 11px; color: #777; margin-top: 10px; text-align: center; }
+        .status-ip { font-size: 11px; color: #777; margin-top: 10px; text-align: center; font-weight: bold; }
 
         /* --- ESTILOS PARA EL VISUALIZADOR 2D 4.2 CON FANTASMAS --- */
         .touchpad-area {
@@ -140,7 +140,7 @@
             background: var(--accent);
             border-radius: 50%;
             transform: translate(-50%, -50%); 
-            transition: top 0.05s linear, left 0.05s linear, opacity 0.3s; /* La transición debe coincidir con la velocidad del ESP */
+            transition: top 0.05s linear, left 0.05s linear, opacity 0.3s; 
             top: 50%;
             left: 50%;
         }
@@ -155,7 +155,7 @@
 </head>
 <body>
 
-    <h1>Dashboard Control Balancin 4.2</h1>
+    <h1>Dashboard Control Balancin 4.21</h1>
 
     <div class="container">
         <div class="panel" id="mainPanel">
@@ -219,8 +219,11 @@
         let tiempoInicio = 0; 
         let posChart;
         
-        // Array para el historial de posiciones del visualizador 2D
         let posHistory = [];
+        
+        // Variables para monitorear el estado de la ESP32
+        let timeoutESP;
+        let isESPConnected = false;
 
         window.onload = function() {
             const ctx = document.getElementById('chartPos').getContext('2d');
@@ -258,14 +261,29 @@
         };
 
         client.on('connect', () => {
-            document.getElementById('mqttStatus').innerText = "Conectado a la Nube (WSS)";
-            document.getElementById('mqttStatus').style.color = "#2ecc71";
+            document.getElementById('mqttStatus').innerText = "Conectado a la Nube (WSS) - Esperando ESP...";
+            document.getElementById('mqttStatus').style.color = "#f1c40f"; // Amarillo
             client.subscribe(TOPIC_DATA);
         });
 
         client.on('message', (topic, message) => {
             const data = JSON.parse(message.toString());
             
+            // --- Lógica de monitoreo de conexión de la ESP ---
+            if (!isESPConnected) {
+                isESPConnected = true;
+                document.getElementById('mqttStatus').innerText = "Conectado a la Nube (WSS) - Conectado a la ESP";
+                document.getElementById('mqttStatus').style.color = "#2ecc71"; // Verde
+            }
+            
+            clearTimeout(timeoutESP);
+            timeoutESP = setTimeout(() => {
+                isESPConnected = false;
+                document.getElementById('mqttStatus').innerText = "Conectado a la Nube (WSS) - ESP Desconectada";
+                document.getElementById('mqttStatus').style.color = "#e74c3c"; // Rojo
+            }, 1000); // 1 segundo sin mensajes = desconectado
+            // -------------------------------------------------
+
             if(data.m_on !== undefined) {
                 if (data.c_on === true && estadoActual.control === false) {
                     resetChart();
@@ -284,11 +302,9 @@
             document.getElementById('v_errX').innerText = data.errX.toFixed(2);
             document.getElementById('v_errY').innerText = data.errY.toFixed(2);
             
-            // Calculo de porcentajes de error simplificado a base de +-500 max
             document.getElementById('p_errX').innerText = `${((posX_final - 550) / 4.15).toFixed(1)}%`;
             document.getElementById('p_errY').innerText = `${((posY_final - 550) / 4.5).toFixed(1)}%`;
 
-            // --- LÓGICA DEL VISUALIZADOR 2D CON ESCALADO 4.1 Y FANTASMAS ---
             const dot = document.getElementById('ballDot');
             const ghosts = [
                 document.getElementById('ghost1'),
@@ -298,31 +314,25 @@
             ];
 
             if (posX_final === 0 && posY_final === 0) {
-                // Sin bola: limpia historial, opaca y centra todo
                 posHistory = [];
                 dot.style.opacity = '0.2';
                 dot.style.top = '50%';
                 dot.style.left = '50%';
                 ghosts.forEach(g => g.style.opacity = '0');
             } else {
-                // Mapeo Simétrico
                 let topPct = ((posX_final - 135) / 830) * 100;
                 let leftPct = ((posY_final - 50) / 1000) * 100;
                 
-                // Clamping
                 topPct = Math.min(Math.max(topPct, 0), 100);
                 leftPct = Math.min(Math.max(leftPct, 0), 100);
 
-                // Agregar nueva posición al inicio del historial
                 posHistory.unshift({ top: topPct, left: leftPct });
-                if (posHistory.length > 5) posHistory.pop(); // Mantener solo 5 posiciones
+                if (posHistory.length > 5) posHistory.pop(); 
 
-                // Renderizar bola principal
                 dot.style.opacity = '1';
                 dot.style.top = posHistory[0].top + '%';
                 dot.style.left = posHistory[0].left + '%';
 
-                // Renderizar fantasmas con diferentes niveles de opacidad
                 const opacities = [0.6, 0.4, 0.2, 0.1];
                 for (let i = 0; i < 4; i++) {
                     if (posHistory[i + 1]) {
