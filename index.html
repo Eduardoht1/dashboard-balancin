@@ -38,7 +38,7 @@
             gap: 15px;
             max-width: 1400px;
             width: 100%;
-            align-items: stretch;
+            align-items: stretch; /* Obliga a ambos paneles a tener exactamente la misma altura */
         }
 
         @media (max-width: 850px) {
@@ -56,13 +56,12 @@
             min-height: 200px;
         }
 
-        /* --- CORRECCIÓN DEL CRECIMIENTO --- */
+        /* --- LÍNEA CORREGIDA 1 --- */
         .panel-right {
             display: flex;
             flex-direction: column;
             height: 100%;
-            min-width: 0; 
-            min-height: 0; /* ESTO DETIENE EL CICLO INFINITO */
+            min-height: 0; /* Agregado para detener el crecimiento en Grid */
         }
 
         h2 { 
@@ -119,18 +118,21 @@
         .pid-value { font-size: 12px; color: #f1c40f; font-weight: bold; }
         .percent-val { font-size: 11px; color: #aaa; margin-left: 4px; }
 
+        /* --- LÍNEA CORREGIDA 2 --- */
         .chart-container {
             position: relative;
             width: 100%;
-            flex-grow: 1; 
-            min-height: 0; 
+            flex-grow: 1; /* Hace que llene el hueco */
+            min-height: 0; /* Cambiado de 520px a 0 para quitar el tamaño fijo */
             background: #222;
             border-radius: 8px;
         }
         
+        /* --- LÍNEA CORREGIDA 3 --- */
         canvas { 
             border-radius: 8px; 
-            position: absolute;
+            /* Posición absoluta forza a Chart.js a someterse al tamaño de su contenedor */
+            position: absolute !important;
             top: 0;
             left: 0;
             width: 100% !important;
@@ -170,6 +172,7 @@
         .ghost-3   { width: 10px; height: 10px; z-index: 2; opacity: 0; }
         .ghost-4   { width: 8px;  height: 8px;  z-index: 1; opacity: 0; }
 
+        /* --- ESTILOS DEL PANEL DE AJUSTES INFERIOR --- */
         .tuning-panel {
             background: var(--card);
             padding: 15px;
@@ -200,6 +203,7 @@
             margin-bottom: 2px;
         }
 
+        /* Valor actual en la ESP (Solo lectura) */
         .current-val {
             font-size: 13px;
             color: var(--accent);
@@ -212,7 +216,7 @@
         .tuning-grid input {
             background: #111;
             border: 1px solid #444;
-            color: #f1c40f; 
+            color: #f1c40f; /* Amarillo para input */
             padding: 8px 4px;
             border-radius: 4px;
             font-family: monospace;
@@ -221,6 +225,7 @@
             width: 100%;
             box-sizing: border-box;
             transition: border-color 0.2s;
+            /* Quitar las flechitas */
             -moz-appearance: textfield;
         }
         
@@ -235,6 +240,7 @@
             border-color: var(--accent);
         }
 
+        /* Divisores visuales suaves entre grupos X e Y */
         .col-spx { border-right: 1px solid #444; padding-right: 15px; }
         .col-kpy { padding-left: 15px; }
 
@@ -245,6 +251,7 @@
         }
         .btn-container .btn { width: 300px; margin: 0; }
 
+        /* Colores específicos para Y */
         .label-y { color: #e74c3c !important; }
         .val-y { color: #e74c3c !important; }
 
