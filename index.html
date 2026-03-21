@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dashboard Balancín de Bola 7.0</title>
+    <title>Dashboard Balancín de Bola 7.1</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <style>
@@ -412,7 +412,7 @@
         </div>
     </div>
 
-    <h1>Dashboard Control Balancín 7.0</h1>
+    <h1>Dashboard Control Balancín 7.1</h1>
 
     <div class="container">
         <div class="panel" id="mainPanel">
@@ -458,8 +458,8 @@
                     <span id="alphaVal">100%</span>
                 </div>
                 <input type="range" id="alphaSlider" min="1" max="100" value="100" class="slider" 
-                       oninput="document.getElementById('alphaVal').innerText = this.value + '%'" 
-                       onchange="enviarAlpha()">
+                       oninput="document.getElementById('alphaVal').innerText = this.value + '%'">
+                <button id="btnAlpha" class="btn btn-accent" style="margin-top: 10px;" onclick="enviarAlpha()">Aplicar Alpha</button>
             </div>
 
         </div>
@@ -570,13 +570,19 @@
             const inputs = document.querySelectorAll('.tuning-grid input');
             const btnRestaurar = document.getElementById('btnRestaurar');
             const btnAplicar = document.getElementById('btnAplicar');
-            const alphaSlider = document.getElementById('alphaSlider'); // Desactivar slider a invitado
+            const alphaSlider = document.getElementById('alphaSlider'); 
+            const btnAlpha = document.getElementById('btnAlpha');
 
             if(esInvitado) {
                 // Bloquear inputs
                 inputs.forEach(inp => inp.disabled = true);
                 if (alphaSlider) alphaSlider.disabled = true;
-                // Bloquear botones inferiores
+                
+                // Bloquear botones
+                if (btnAlpha) {
+                    btnAlpha.disabled = true;
+                    btnAlpha.classList.add('btn-disabled');
+                }
                 btnRestaurar.disabled = true;
                 btnRestaurar.classList.add('btn-disabled');
                 btnAplicar.disabled = true;
@@ -586,7 +592,12 @@
                 // Desbloquear inputs
                 inputs.forEach(inp => inp.disabled = false);
                 if (alphaSlider) alphaSlider.disabled = false;
-                // Desbloquear botones inferiores
+                
+                // Desbloquear botones
+                if (btnAlpha) {
+                    btnAlpha.disabled = false;
+                    btnAlpha.classList.remove('btn-disabled');
+                }
                 btnRestaurar.disabled = false;
                 btnRestaurar.classList.remove('btn-disabled');
                 btnAplicar.disabled = false;
@@ -796,6 +807,16 @@
             let val = document.getElementById('alphaSlider').value;
             let alphaDecimal = val / 100.0;
             client.publish(TOPIC_CMD, JSON.stringify({ alpha: alphaDecimal }));
+            
+            // Efecto visual en el botón
+            const btn = document.getElementById('btnAlpha');
+            const textOrig = btn.innerText;
+            btn.innerText = "¡Enviado!";
+            btn.style.backgroundColor = "#2ecc71";
+            setTimeout(() => {
+                btn.innerText = textOrig;
+                btn.style.backgroundColor = "var(--accent)";
+            }, 1000);
         }
         
         function restaurarDefaults() {
