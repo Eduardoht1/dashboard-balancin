@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dashboard Balancín de Bola 7.1</title>
+    <title>Dashboard Balancín de Bola 7.2</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <style>
@@ -32,7 +32,6 @@
 
         h1 { margin-bottom: 15px; font-size: 22px; text-align: center; }
 
-        /* --- NUEVO: ESTILOS PARA EL LOGIN --- */
         .login-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -76,7 +75,6 @@
             display: none;
             margin-top: -5px;
         }
-        /* ------------------------------------ */
 
         .container {
             display: grid;
@@ -87,17 +85,14 @@
             align-items: stretch; 
         }
 
-        /* --- CORRECCIONES RESPONSIVAS PARA MÓVILES --- */
         @media (max-width: 850px) {
             .container { grid-template-columns: 1fr; }
             .chart-container { min-height: 350px !important; }
             
-            /* Romper a 4 columnas para tablets/teléfonos horizontales */
             .tuning-grid { 
                 grid-template-columns: repeat(4, 1fr) !important; 
                 gap: 15px 10px !important; 
             }
-            /* Quitar el divisor vertical y los paddings cuando se apilan */
             .col-spx { border-right: none !important; padding-right: 0 !important; }
             .col-kpy { padding-left: 0 !important; }
             
@@ -106,7 +101,6 @@
         }
 
         @media (max-width: 500px) {
-            /* Romper a 2 columnas para teléfonos en vertical */
             .tuning-grid { 
                 grid-template-columns: repeat(2, 1fr) !important; 
             }
@@ -216,11 +210,9 @@
             box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
         }
 
-        /* Líneas grises originales del centro (50%) */
         .line-h { position: absolute; top: 50%; left: 0; width: 100%; height: 1px; border-top: 1px dashed rgba(255,255,255,0.2); }
         .line-v { position: absolute; top: 0; left: 50%; width: 1px; height: 100%; border-left: 1px dashed rgba(255,255,255,0.2); }
         
-        /* Círculo de Tolerancia Fijo */
         .target-circle {
             position: absolute;
             top: 50%;
@@ -233,7 +225,6 @@
             pointer-events: none; 
         }
         
-        /* Líneas rojas para los Setpoints */
         .line-h-sp { position: absolute; top: 50%; left: 0; width: 100%; height: 1px; border-top: 1px dashed rgba(231, 76, 60, 0.8); transition: top 0.2s linear; }
         .line-v-sp { position: absolute; top: 0; left: 50%; width: 1px; height: 100%; border-left: 1px dashed rgba(231, 76, 60, 0.8); transition: left 0.2s linear; }
 
@@ -360,7 +351,6 @@
             outline: none;
         }
 
-        /* Estilo para los inputs cuando el usuario es invitado */
         .tuning-grid input:disabled {
             background: #1a1a1a;
             color: #555 !important;
@@ -379,7 +369,6 @@
         }
         .btn-container .btn { width: 300px; margin: 0; }
 
-        /* --- NUEVOS COLORES PARA X e Y --- */
         .label-x { color: var(--accent) !important; }
         .val-x { color: var(--accent) !important; }
         .input-x { color: var(--accent) !important; }
@@ -412,7 +401,7 @@
         </div>
     </div>
 
-    <h1>Dashboard Control Balancín 7.1</h1>
+    <h1>Dashboard Control Balancín 7.2</h1>
 
     <div class="container">
         <div class="panel" id="mainPanel">
@@ -454,12 +443,12 @@
 
             <div class="slider-container">
                 <div class="slider-header">
-                    <span>Filtro EMA (Alpha)</span>
-                    <span id="alphaVal">100%</span>
+                    <span>Alpha Actual: <span id="alphaActualVal" style="color: var(--accent); font-weight: bold;">--</span></span>
+                    <span>Nuevo: <span id="alphaVal">100%</span></span>
                 </div>
                 <input type="range" id="alphaSlider" min="1" max="100" value="100" class="slider" 
                        oninput="document.getElementById('alphaVal').innerText = this.value + '%'">
-                <button id="btnAlpha" class="btn btn-accent" style="margin-top: 10px;" onclick="enviarAlpha()">Aplicar Alpha</button>
+                <button id="btnAlpha" class="btn btn-accent" style="margin-top: 10px;" onclick="enviarAlpha()">Aplicar Cambio</button>
             </div>
 
         </div>
@@ -526,7 +515,6 @@
     </div>
 
     <script>
-        // --- VARIABLES DE SESIÓN ---
         let esInvitado = true;
 
         const TOPIC_DATA = "delta/eduhdz/telemetria";
@@ -543,10 +531,8 @@
         let isESPConnected = false;
         
         let inputsLlenados = false;
-        
         let defaultVals = {};
 
-        // --- FUNCIONES DE LOGIN ---
         function iniciarSesion() {
             const user = document.getElementById('loginUser').value;
             const pass = document.getElementById('loginPass').value;
@@ -574,11 +560,9 @@
             const btnAlpha = document.getElementById('btnAlpha');
 
             if(esInvitado) {
-                // Bloquear inputs
                 inputs.forEach(inp => inp.disabled = true);
                 if (alphaSlider) alphaSlider.disabled = true;
                 
-                // Bloquear botones
                 if (btnAlpha) {
                     btnAlpha.disabled = true;
                     btnAlpha.classList.add('btn-disabled');
@@ -589,11 +573,9 @@
                 btnAplicar.classList.add('btn-disabled');
                 btnAplicar.innerText = "Modo Solo Lectura";
             } else {
-                // Desbloquear inputs
                 inputs.forEach(inp => inp.disabled = false);
                 if (alphaSlider) alphaSlider.disabled = false;
                 
-                // Desbloquear botones
                 if (btnAlpha) {
                     btnAlpha.disabled = false;
                     btnAlpha.classList.remove('btn-disabled');
@@ -604,10 +586,8 @@
                 btnAplicar.classList.remove('btn-disabled');
                 btnAplicar.innerText = "Aplicar Nuevos Ajustes a ESP";
             }
-            actualizarUI(); // Actualiza los botones principales de Motores y Control
+            actualizarUI();
         }
-
-        // --------------------------------
 
         window.onload = function() {
             const ctx = document.getElementById('chartPos').getContext('2d');
@@ -733,11 +713,15 @@
                 document.getElementById('v_s3').innerText = Math.round(data.s3) + "°";
             }
 
-            // --- NUEVO: Leer Alpha inicial de la ESP ---
-            if(data.alpha !== undefined && !inputsLlenados) {
+            // --- ACTUALIZADO: Leer Alpha de la ESP y mostrarlo ---
+            if(data.alpha !== undefined) {
                 let alphaPct = Math.round(data.alpha * 100);
-                document.getElementById('alphaSlider').value = alphaPct;
-                document.getElementById('alphaVal').innerText = alphaPct + "%";
+                document.getElementById('alphaActualVal').innerText = alphaPct + "%";
+                
+                if(!inputsLlenados) {
+                    document.getElementById('alphaSlider').value = alphaPct;
+                    document.getElementById('alphaVal').innerText = alphaPct + "%";
+                }
             }
 
             if(data.kpx !== undefined) {
@@ -790,7 +774,7 @@
         });
 
         function sendCmd(tipo) {
-            if(esInvitado) return; // Seguridad extra
+            if(esInvitado) return; 
             let nEstado = { ...estadoActual };
             if (tipo === 'motores') {
                 nEstado.motores = !estadoActual.motores;
@@ -801,14 +785,12 @@
             client.publish(TOPIC_CMD, JSON.stringify(nEstado));
         }
 
-        // --- NUEVA FUNCION: Enviar Alpha ---
         function enviarAlpha() {
             if(esInvitado) return;
             let val = document.getElementById('alphaSlider').value;
             let alphaDecimal = val / 100.0;
             client.publish(TOPIC_CMD, JSON.stringify({ alpha: alphaDecimal }));
             
-            // Efecto visual en el botón
             const btn = document.getElementById('btnAlpha');
             const textOrig = btn.innerText;
             btn.innerText = "¡Enviado!";
@@ -820,7 +802,7 @@
         }
         
         function restaurarDefaults() {
-            if(esInvitado) return; // Seguridad extra
+            if(esInvitado) return; 
             if(Object.keys(defaultVals).length > 0) {
                 document.getElementById('in_kpx').value = defaultVals.kpx;
                 document.getElementById('in_kix').value = defaultVals.kix;
@@ -834,7 +816,7 @@
         }
 
         function enviarAjustes() {
-            if(esInvitado) return; // Seguridad extra
+            if(esInvitado) return; 
             
             let payload = {};
             
